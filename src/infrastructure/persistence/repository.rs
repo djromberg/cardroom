@@ -6,6 +6,7 @@ use crate::domain::QueryTournaments;
 use crate::domain::QueryTournamentsError;
 use crate::domain::Tournament;
 
+use log::debug;
 use uuid::Uuid;
 
 use std::collections::HashMap;
@@ -25,7 +26,7 @@ impl InMemoryTournamentRepository {
 
 impl LoadTournament for InMemoryTournamentRepository {
     fn load_tournament(&self, tournament_id: Uuid) -> Result<Tournament, LoadTournamentError> {
-        println!("[INFRASTRUCTURE] load_tournament");
+        debug!("load tournament {}", tournament_id);
         if let Some(tournament) = self.tournaments.get(&tournament_id) {
             Ok(tournament.clone())
         } else {
@@ -37,7 +38,7 @@ impl LoadTournament for InMemoryTournamentRepository {
 
 impl SaveTournament for InMemoryTournamentRepository {
     fn save_tournament(&mut self, tournament: Tournament) -> Result<(), SaveTournamentError> {
-        println!("[INFRASTRUCTURE] save_tournament: {:?}", tournament.id());
+        debug!("save tournament {}", tournament.id());
         self.tournaments.insert(tournament.id(), tournament);
         Ok(())
     }
@@ -46,7 +47,7 @@ impl SaveTournament for InMemoryTournamentRepository {
 
 impl QueryTournaments for InMemoryTournamentRepository {
     fn query_tournaments(&self) -> Result<Vec<Tournament>, QueryTournamentsError> {
-        println!("[INFRASTRUCTURE] query_tournaments");
+        debug!("query tournaments");
         Ok(self.tournaments.values().cloned().collect())
     }
 }

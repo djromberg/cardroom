@@ -5,6 +5,7 @@ use super::table::TableEvent;
 use super::table::TableSpecification;
 use super::table::TableSpecificationError;
 
+use log::debug;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -100,7 +101,7 @@ impl Tournament {
     }
 
     pub fn join(&mut self, player_id: Uuid, nickname: Nickname) -> Result<Uuid, TournamentError> {
-        println!("[Tournament] join: {:?}, {:?}", player_id, nickname);
+        debug!("join player_id {} with nickname {} within tournament {}", player_id, nickname, self.id);
         if self.stage == TournamentStage::WaitingForPlayers {
             if self.has_player(player_id) {
                 Err(TournamentError::PlayerAlreadyJoined)
@@ -117,7 +118,7 @@ impl Tournament {
     }
 
     pub fn leave(&mut self, player_id: Uuid) -> Result<(), TournamentError> {
-        println!("[Tournament] leave: {:?}", player_id);
+        debug!("leave player_id {} within tournament {}", player_id, self.id);
         if self.stage == TournamentStage::Running {
             Err(TournamentError::TournamentAlreadyStarted)
         } else {
