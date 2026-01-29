@@ -2,7 +2,8 @@ mod create_tournament;
 mod join_tournament;
 
 pub use create_tournament::*;
+pub use join_tournament::*;
 
 
-pub trait ProvideServices: CreateTournament {}
-impl<T: CreateTournament> ProvideServices for T {}
+pub trait ProvideServices: CreateTournament + JoinTournament {}
+impl<T: CreateTournament + JoinTournament> ProvideServices for T {}

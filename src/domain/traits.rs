@@ -53,3 +53,7 @@ use crate::domain::table::TableEvent;
 pub trait PublishTableEvents {
     fn publish_table_events(&self, events: Vec<TableEvent>);
 }
+
+
+pub trait AccessTableEventBroadcast: PublishTableEvents {}
+impl<T: PublishTableEvents> AccessTableEventBroadcast for T {}
