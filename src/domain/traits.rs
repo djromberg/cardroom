@@ -4,7 +4,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, Copy)]
 pub enum LoadTournamentError {
     #[error("Tournament not found")]
     TournamentNotFound,
@@ -17,7 +17,7 @@ pub trait LoadTournament {
 }
 
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, Copy)]
 pub enum SaveTournamentError {
     #[error("There is a newer version of the given tournament in the database")]
     TournamentOutdated,

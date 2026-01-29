@@ -1,4 +1,5 @@
 mod create_tournament;
+mod join_tournament;
 
 pub use create_tournament::*;
 
