@@ -163,6 +163,20 @@ mod tests {
     }
 
     #[test]
+    fn join_tournament_with_tournament_error() {
+        let spec = TournamentSpecification::new(1, 2).unwrap();
+        let mut tournament = Tournament::new(&spec);
+        _ = tournament.join(Uuid::new_v4(), Nickname::new("James").unwrap());
+        _ = tournament.join(Uuid::new_v4(), Nickname::new("Patricia").unwrap());
+        let tournament_id = tournament.id();
+        let mut repository = DummyRepository::new_with_tournament(tournament);
+        let request = JoinTournamentRequest { tournament_id, nickname: "Daniel".into() };
+        let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
+        let result = join_tournament(request, &auth_info, &mut repository);
+        assert!(matches!(result, Err(JoinTournamentError::TournamentError(_))));
+    }
+
+    #[test]
     fn join_tournament_without_any_error() {
         let spec = TournamentSpecification::new(1, 2).unwrap();
         let tournament = Tournament::new(&spec);
