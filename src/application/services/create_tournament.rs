@@ -125,6 +125,6 @@ mod tests {
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
         let result = create_tournament(request, &auth_info, &mut repository);
         let tournament = repository.tournament().unwrap();
-        assert!(matches!(result, Ok(CreateTournamentResponse { tournament_id }) if tournament_id == tournament.id()));
+        assert!(result.is_ok_and(|response| response.tournament_id == tournament.id()));
     }
 }
