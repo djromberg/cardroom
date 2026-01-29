@@ -5,9 +5,11 @@ use crate::domain::LoadTournament;
 use crate::domain::LoadTournamentError;
 use crate::domain::Nickname;
 use crate::domain::NicknameError;
+use crate::domain::PublishTableEvents;
 use crate::domain::SaveTournament;
 use crate::domain::SaveTournamentError;
 use crate::domain::TournamentError;
+use crate::domain::save_tournament_and_publish_events;
 
 use thiserror::Error;
 use uuid::Uuid;
@@ -46,20 +48,27 @@ pub trait JoinTournament {
 }
 
 
-pub(in crate::application) fn join_tournament<Repository: LoadTournament + SaveTournament>(request: JoinTournamentRequest, auth_info: &AuthInfo, repository: &mut Repository) -> Result<JoinTournamentResponse, JoinTournamentError> {
+pub(in crate::application) fn join_tournament<Repository: LoadTournament + SaveTournament, Publisher: PublishTableEvents>(
+    request: JoinTournamentRequest,
+    auth_info: &AuthInfo,
+    repository: &mut Repository,
+    publisher: &Publisher,
+) -> Result<JoinTournamentResponse, JoinTournamentError> {
     let account_id = auth_info.ensure_authenticated()?;
     let nickname = Nickname::new(request.nickname)?;
     let mut tournament = repository.load_tournament(request.tournament_id)?;
     let table_id = tournament.join(account_id, nickname)?;
-    repository.save_tournament(tournament)?;
-    let response = JoinTournamentResponse { table_id };
-    Ok(response)
+    save_tournament_and_publish_events(tournament, repository, publisher)?;
+    Ok(JoinTournamentResponse { table_id })
 }
 
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+
     use crate::application::AuthRole;
+    use crate::domain::TableEvent;
     use crate::domain::Tournament;
     use crate::domain::TournamentSpecification;
 
@@ -121,33 +130,60 @@ mod tests {
     }
 
 
+    struct DummyPublisher {
+        events: Cell<Vec<TableEvent>>
+    }
+
+    impl DummyPublisher {
+        fn new() -> Self {
+            Self { events: Cell::new(vec![]) }
+        }
+
+        fn consume(&self) -> Vec<TableEvent> {
+            self.events.take()
+        }
+    }
+
+    impl PublishTableEvents for DummyPublisher {
+        fn publish_table_events(&self, events: Vec<TableEvent>) {
+            self.events.replace(events);
+        }
+    }
+
+
     #[test]
     fn join_tournament_without_being_authenticated() {
         let mut repository = DummyRepository::new_without_tournament();
+        let publisher = DummyPublisher::new();
         let request = JoinTournamentRequest { tournament_id: Uuid::new_v4(), nickname: "Daniel".into() };
         let auth_info = AuthInfo::Unauthenticated;
-        let result = join_tournament(request, &auth_info, &mut repository);
+        let result = join_tournament(request, &auth_info, &mut repository, &publisher);
         assert!(matches!(result, Err(JoinTournamentError::AuthError(AuthError::AuthenticationRequired))));
+        assert_eq!(publisher.consume(), vec![]);
         assert_eq!(repository.tournament(), None);
     }
 
     #[test]
     fn join_tournament_with_invalid_parameters() {
         let mut repository = DummyRepository::new_without_tournament();
+        let publisher = DummyPublisher::new();
         let request = JoinTournamentRequest { tournament_id: Uuid::new_v4(), nickname: "".into() };
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
-        let result = join_tournament(request, &auth_info, &mut repository);
+        let result = join_tournament(request, &auth_info, &mut repository, &publisher);
         assert!(matches!(result, Err(JoinTournamentError::NicknameError(_))));
+        assert_eq!(publisher.consume(), vec![]);
         assert_eq!(repository.tournament(), None);
     }
 
     #[test]
     fn join_tournament_with_repository_error_on_load() {
         let mut repository = DummyRepository::new_with_error_on_load(LoadTournamentError::DatabaseReadingError);
+        let publisher = DummyPublisher::new();
         let request = JoinTournamentRequest { tournament_id: Uuid::new_v4(), nickname: "Daniel".into() };
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
-        let result = join_tournament(request, &auth_info, &mut repository);
+        let result = join_tournament(request, &auth_info, &mut repository, &publisher);
         assert!(matches!(result, Err(JoinTournamentError::LoadTournamentError(LoadTournamentError::DatabaseReadingError))));
+        assert_eq!(publisher.consume(), vec![]);
     }
 
     #[test]
@@ -156,10 +192,12 @@ mod tests {
         let tournament = Tournament::new(&spec);
         let tournament_id = tournament.id();
         let mut repository = DummyRepository::new_with_error_on_save(SaveTournamentError::DatabaseWritingError, tournament);
+        let publisher = DummyPublisher::new();
         let request = JoinTournamentRequest { tournament_id, nickname: "Daniel".into() };
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
-        let result = join_tournament(request, &auth_info, &mut repository);
+        let result = join_tournament(request, &auth_info, &mut repository, &publisher);
         assert!(matches!(result, Err(JoinTournamentError::SaveTournamentError(SaveTournamentError::DatabaseWritingError))));
+        assert_eq!(publisher.consume(), vec![]);
     }
 
     #[test]
@@ -170,10 +208,12 @@ mod tests {
         _ = tournament.join(Uuid::new_v4(), Nickname::new("Patricia").unwrap());
         let tournament_id = tournament.id();
         let mut repository = DummyRepository::new_with_tournament(tournament);
+        let publisher = DummyPublisher::new();
         let request = JoinTournamentRequest { tournament_id, nickname: "Daniel".into() };
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
-        let result = join_tournament(request, &auth_info, &mut repository);
+        let result = join_tournament(request, &auth_info, &mut repository, &publisher);
         assert!(matches!(result, Err(JoinTournamentError::TournamentError(_))));
+        assert_eq!(publisher.consume(), vec![]);
     }
 
     #[test]
@@ -183,9 +223,12 @@ mod tests {
         let tournament_id = tournament.id();
         let table_ids = tournament.table_ids();
         let mut repository = DummyRepository::new_with_tournament(tournament);
+        let publisher = DummyPublisher::new();
         let request = JoinTournamentRequest { tournament_id, nickname: "Daniel".into() };
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
-        let result = join_tournament(request, &auth_info, &mut repository);
+        let result = join_tournament(request, &auth_info, &mut repository, &publisher);
         assert!(result.is_ok_and(|response| table_ids.contains(&response.table_id)));
+        let table_events = publisher.consume();
+        assert!(table_events.iter().any(|event| table_ids.contains(&event.table_id)));
     }
 }

@@ -1,9 +1,12 @@
 mod nickname;
 mod player;
+mod services;
 mod table;
 mod tournament;
 mod traits;
 
 pub use nickname::*;
-pub use traits::*;
+pub use services::*;
+pub use table::*;
 pub use tournament::*;
+pub use traits::*;

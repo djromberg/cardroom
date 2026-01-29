@@ -131,14 +131,14 @@ impl Table {
 }
 
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TableEvent {
     pub table_id: Uuid,
     event_type: TableEventType,
 }
 
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TableEventType {
     PlayerSeated {
         nickname: Nickname,

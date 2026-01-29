@@ -43,3 +43,13 @@ pub trait QueryTournaments {
 
 pub trait AccessTournaments: LoadTournament + SaveTournament + QueryTournaments {}
 impl<T: LoadTournament + SaveTournament + QueryTournaments> AccessTournaments for T {}
+
+
+// ----------------------- tryout:
+
+use crate::domain::table::TableEvent;
+
+
+pub trait PublishTableEvents {
+    fn publish_table_events(&self, events: Vec<TableEvent>);
+}
