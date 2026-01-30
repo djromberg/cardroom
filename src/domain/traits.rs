@@ -54,6 +54,16 @@ pub trait PublishTableEvents {
     fn publish_table_events(&self, events: Vec<TableEvent>);
 }
 
+pub trait ReceiveTableEvent {
+    fn receive_table_event(&self, event: TableEvent);
+}
 
-pub trait AccessTableEventBroadcast: PublishTableEvents {}
-impl<T: PublishTableEvents> AccessTableEventBroadcast for T {}
+pub trait RegisterForTableEvents {
+    type Receiver;
+
+    fn register_for_table_events(&mut self, table_id: Uuid, receiver: Self::Receiver);
+}
+
+
+pub trait AccessTableEventBroadcast: PublishTableEvents + RegisterForTableEvents {}
+impl<T: PublishTableEvents + RegisterForTableEvents> AccessTableEventBroadcast for T {}

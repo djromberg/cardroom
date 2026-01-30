@@ -134,7 +134,7 @@ impl Table {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableEvent {
     pub table_id: Uuid,
-    event_type: TableEventType,
+    pub event_type: TableEventType,
 }
 
 
