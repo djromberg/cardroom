@@ -33,6 +33,10 @@ impl AxumServer {
                 "/tournaments",
                 routing::post(endpoints::create_tournament)
             )
+            .route(
+                "/tournaments/{tournament_id}/join",
+                routing::post(endpoints::join_tournament)
+            )
             .with_state(Arc::new(Mutex::new(provider)));
 
         info!("serving cardroom application ...");

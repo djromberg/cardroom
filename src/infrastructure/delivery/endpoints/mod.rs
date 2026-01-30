@@ -1,4 +1,5 @@
 mod create_tournament;
+mod join_tournament;
 
 use crate::application::AuthError;
 
@@ -8,6 +9,7 @@ use axum::http::StatusCode;
 
 
 pub use create_tournament::handle_request as create_tournament;
+pub use join_tournament::handle_request as join_tournament;
 
 
 fn build_response(status_code: axum::http::StatusCode, message: String) -> Response {
