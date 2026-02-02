@@ -23,7 +23,7 @@ pub struct RequestBody {
 
 #[derive(Debug, Serialize)]
 pub struct ResponseBody {
-    table_id: Uuid,
+    table_number: usize,
 }
 
 
@@ -39,7 +39,7 @@ pub async fn handle_request(
 
     let mut service = service.lock().await;
     let response = service.join_tournament(request, &auth_info)?;
-    Ok(Json(ResponseBody { table_id: response.table_id }))
+    Ok(Json(ResponseBody { table_number: response.table_number }))
 }
 
 

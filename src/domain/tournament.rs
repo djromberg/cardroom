@@ -68,7 +68,7 @@ pub struct Tournament {
     id: Uuid,
     stage: TournamentStage,
     tables: Vec<Table>,
-    events: Vec<TableEvent>,
+    events: Vec<TournamentEvent>,
 }
 
 impl Tournament {
@@ -84,10 +84,6 @@ impl Tournament {
         self.id
     }
 
-    pub fn table_ids(&self) -> Vec<Uuid> {
-        self.tables.iter().map(|table| table.id()).collect()
-    }
-
     pub fn table_count(&self) -> usize {
         self.tables.len()
     }
@@ -100,76 +96,93 @@ impl Tournament {
         self.stage == TournamentStage::ReadyToStart
     }
 
-    pub fn join(&mut self, player_id: Uuid, nickname: Nickname) -> Result<Uuid, TournamentError> {
+    pub fn join(&mut self, player_id: Uuid, nickname: Nickname) -> Result<usize, TournamentError> {
         debug!("join player_id {} with nickname {} within tournament {}", player_id, nickname, self.id);
         if self.stage == TournamentStage::WaitingForPlayers {
             if self.has_player(player_id) {
                 Err(TournamentError::PlayerAlreadyJoined)
             } else {
-                let table_id = self.seat_player(player_id, nickname);
+                let table_number = self.seat_player(player_id, nickname);
                 if self.all_seats_are_taken() {
                     self.stage = TournamentStage::ReadyToStart;
                 }
-                Ok(table_id)
+                Ok(table_number)
             }
         } else {
             Err(TournamentError::TournamentAlreadyStarted)
         }
     }
 
-    pub fn leave(&mut self, player_id: Uuid) -> Result<(), TournamentError> {
-        debug!("leave player_id {} within tournament {}", player_id, self.id);
-        if self.stage == TournamentStage::Running {
-            Err(TournamentError::TournamentAlreadyStarted)
-        } else {
-            self.leave_player(player_id)
-        }
-    }
+    // pub fn leave(&mut self, player_id: Uuid) -> Result<(), TournamentError> {
+    //     debug!("leave player_id {} within tournament {}", player_id, self.id);
+    //     if self.stage == TournamentStage::Running {
+    //         Err(TournamentError::TournamentAlreadyStarted)
+    //     } else {
+    //         self.leave_player(player_id)
+    //     }
+    // }
 
     pub fn start(&mut self) {
         assert!(self.is_ready_to_start());
-        for table in &mut self.tables {
+        for (table_number, table) in self.tables.iter_mut().enumerate() {
             table.start_game();
-            self.events.extend(table.collect_events());
+
+            let table_events = table.collect_events();
+            let tournament_events = table_events.iter().map(|table_event|
+                TournamentEvent {
+                    tournament_id: self.id,
+                    event_type: TournamentEventType::TableEvent {
+                        table_number, event_type: table_event.clone()
+                    },
+                }
+            );
+            self.events.extend(tournament_events);
         }
         self.stage = TournamentStage::Running;
     }
 
-    pub fn collect_events(&mut self) -> Vec<TableEvent> {
+    pub fn collect_events(&mut self) -> Vec<TournamentEvent> {
         std::mem::take(&mut self.events)
     }
 
-    fn seat_player(&mut self, player_id: Uuid, nickname: Nickname) -> Uuid {
-        let (table_id, table_events) = {
-            let table = self.find_free_seat();
+    fn seat_player(&mut self, player_id: Uuid, nickname: Nickname) -> usize {
+        let (table_number, table_events) = {
+            let table_number = self.find_table_with_free_seats();
+            let table = &mut self.tables[table_number];
             table.sit_down(player_id, nickname.clone(), 1500);
             let table_events = table.collect_events();
-            (table.id(), table_events)
+            (table_number, table_events)
         };
-        self.events.extend(table_events);
-        table_id
+        let tournament_events = table_events.iter().map(|table_event| TournamentEvent {
+            tournament_id: self.id,
+            event_type: TournamentEventType::TableEvent {
+                table_number, event_type: table_event.clone()
+            },
+        });
+        self.events.extend(tournament_events);
+        table_number
     }
 
-    fn leave_player(&mut self, player_id: Uuid) -> Result<(), TournamentError> {
-        let table_events = {
-            if let Some(table) = self.find_players_table_mut(player_id) {
-                table.stand_up(player_id);
-                Ok(table.collect_events())
-            } else {
-                Err(TournamentError::PlayerNotPresent)
-            }
-        }?;
-        self.events.extend(table_events);
-        self.stage = TournamentStage::WaitingForPlayers;
-        Ok(())
-    }
+    // fn leave_player(&mut self, player_id: Uuid) -> Result<(), TournamentError> {
+    //     let table_events = {
+    //         if let Some(table) = self.find_players_table_mut(player_id) {
+    //             table.stand_up(player_id);
+    //             Ok(table.collect_events())
+    //         } else {
+    //             Err(TournamentError::PlayerNotPresent)
+    //         }
+    //     }?;
+    //     self.events.extend(table_events);
+    //     self.stage = TournamentStage::WaitingForPlayers;
+    //     Ok(())
+    // }
 
     fn all_seats_are_taken(&self) -> bool {
         self.tables.iter().all(|table| !table.has_free_seat())
     }
 
-    fn find_free_seat(&mut self) -> &mut Table {
-        self.tables.iter_mut().find(|table| table.has_free_seat()).unwrap()
+    fn find_table_with_free_seats(&self) -> usize {
+        self.tables.iter().enumerate().find(|(_, table)| table.has_free_seat()).map(|(index, _)| index).unwrap()
     }
 
     fn find_players_table_mut(&mut self, player_id: Uuid) -> Option<&mut Table> {
@@ -179,10 +192,37 @@ impl Tournament {
     fn has_player(&self, player_id: Uuid) -> bool {
         self.tables.iter().any(|table| table.has_player(player_id))
     }
+
+    // fn collect_table_events(&mut self) {
+    //     for (table_number, table) in &mut self.tables.iter_mut().enumerate() {
+    //         let table_events = table.collect_events();
+    //         let tournament_events = table_events.iter().map(|table_event| TournamentEvent {
+    //             tournament_id: self.id,
+    //             event_type: TournamentEventType::TableEvent { table_number, event_type: table_event.clone() },
+    //         });
+    //         self.events.extend(tournament_events);
+    //     }
+    // }
 }
 
 impl PartialEq for Tournament {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
+}
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TournamentEvent {
+    pub tournament_id: Uuid,
+    pub event_type: TournamentEventType,
+}
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TournamentEventType {
+    TableEvent {
+        table_number: usize,
+        event_type: TableEvent,
+    },
 }

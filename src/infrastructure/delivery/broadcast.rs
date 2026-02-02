@@ -3,10 +3,12 @@ use std::collections::HashMap;
 use log::info;
 use uuid::Uuid;
 
-use crate::domain::PublishTableEvents;
+use crate::domain::PublishTournamentEvents;
 use crate::domain::ReceiveTableEvent;
 use crate::domain::RegisterForTableEvents;
 use crate::domain::TableEvent;
+use crate::domain::TournamentEvent;
+use crate::domain::TournamentEventType;
 
 
 pub struct LoggingReceiver {
@@ -29,7 +31,7 @@ impl ReceiveTableEvent for LoggingReceiver {
 
 
 pub struct LoggingBroadcast {
-    receivers: HashMap<Uuid, Vec<LoggingReceiver>>,
+    receivers: HashMap<(Uuid, usize), Vec<LoggingReceiver>>,
 }
 
 impl LoggingBroadcast {
@@ -39,14 +41,18 @@ impl LoggingBroadcast {
 }
 
 
-impl PublishTableEvents for LoggingBroadcast {
-    fn publish_table_events(&self, events: Vec<TableEvent>) {
+impl PublishTournamentEvents for LoggingBroadcast {
+    fn publish_tournament_events(&self, events: Vec<TournamentEvent>) {
         info!("publishing {:?}", events);
-        for event in events {
-            for (table_id, receivers) in &self.receivers {
-                if table_id == &event.table_id {
-                    for receiver in receivers {
-                        receiver.receive_table_event(event.clone());
+        for tournament_event in events {
+            match tournament_event.event_type {
+                TournamentEventType::TableEvent { table_number, event_type } => {
+                    for ((tournament_id, recv_table_number), receivers) in &self.receivers {
+                        if tournament_id == &tournament_event.tournament_id && table_number == *recv_table_number {
+                            for receiver in receivers {
+                                receiver.receive_table_event(event_type.clone());
+                            }
+                        }
                     }
                 }
             }
@@ -58,11 +64,12 @@ impl PublishTableEvents for LoggingBroadcast {
 impl RegisterForTableEvents for LoggingBroadcast {
     type Receiver = LoggingReceiver;
 
-    fn register_for_table_events(&mut self, table_id: uuid::Uuid, receiver: Self::Receiver) {
-        if let Some(receivers) = self.receivers.get_mut(&table_id) {
+    fn register_for_table_events(&mut self, tournament_id: Uuid, table_number: usize, receiver: Self::Receiver) {
+        let key = (tournament_id, table_number);
+        if let Some(receivers) = self.receivers.get_mut(&key) {
             receivers.push(receiver);
         } else {
-            self.receivers.insert(table_id, vec![receiver]);
+            self.receivers.insert(key, vec![receiver]);
         }
     }
 }

@@ -40,7 +40,6 @@ pub enum TableError {
 
 #[derive(Debug, Clone)]
 pub struct Table {
-    id: Uuid,
     seats: Vec<Option<Player>>,
     events: Vec<TableEvent>,
 }
@@ -51,11 +50,7 @@ impl Table {
         for _ in 0..spec.seat_count {
             seats.push(None);
         }
-        Self { id: Uuid::new_v4(), seats, events: vec![] }
-    }
-
-    pub fn id(&self) -> Uuid {
-        self.id
+        Self { seats, events: vec![] }
     }
 
     pub fn has_free_seat(&self) -> bool {
@@ -79,13 +74,10 @@ impl Table {
         let player = Player::new(player_id, nickname.clone(), stack);
         _ = self.seats[position].insert(player);
         self.events.push(
-            TableEvent {
-                table_id: self.id,
-                event_type: TableEventType::PlayerSeated {
-                    nickname,
-                    stack,
-                    position,
-                }
+            TableEvent::PlayerSeated {
+                nickname,
+                stack,
+                position,
             }
         );
     }
@@ -94,11 +86,8 @@ impl Table {
         let position = self.player_position(player_id).unwrap();
         self.seats[position].take();
         self.events.push(
-            TableEvent {
-                table_id: self.id,
-                event_type: TableEventType::PlayerLeft {
-                    position,
-                }
+            TableEvent::PlayerLeft {
+                position,
             }
         );
     }
@@ -112,10 +101,7 @@ impl Table {
         assert!(self.can_start_game());
         // TODO: really implement game logic
         self.events.push(
-            TableEvent {
-                table_id: self.id(),
-                event_type: TableEventType::GameStarted { button: 0 }
-            }
+            TableEvent::GameStarted { button: 0 }
         )
     }
 
@@ -132,14 +118,7 @@ impl Table {
 
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TableEvent {
-    pub table_id: Uuid,
-    pub event_type: TableEventType,
-}
-
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TableEventType {
+pub enum TableEvent {
     PlayerSeated {
         nickname: Nickname,
         stack: u32,

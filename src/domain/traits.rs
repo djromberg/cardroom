@@ -47,11 +47,12 @@ impl<T: LoadTournament + SaveTournament + QueryTournaments> AccessTournaments fo
 
 // ----------------------- tryout:
 
-use crate::domain::table::TableEvent;
+use crate::domain::TournamentEvent;
+use crate::domain::TableEvent;
 
 
-pub trait PublishTableEvents {
-    fn publish_table_events(&self, events: Vec<TableEvent>);
+pub trait PublishTournamentEvents {
+    fn publish_tournament_events(&self, events: Vec<TournamentEvent>);
 }
 
 pub trait ReceiveTableEvent {
@@ -61,9 +62,9 @@ pub trait ReceiveTableEvent {
 pub trait RegisterForTableEvents {
     type Receiver;
 
-    fn register_for_table_events(&mut self, table_id: Uuid, receiver: Self::Receiver);
+    fn register_for_table_events(&mut self, tournament_id: Uuid, table_number: usize, receiver: Self::Receiver);
 }
 
 
-pub trait AccessTableEventBroadcast: PublishTableEvents + RegisterForTableEvents {}
-impl<T: PublishTableEvents + RegisterForTableEvents> AccessTableEventBroadcast for T {}
+pub trait AccessTableEventBroadcast: PublishTournamentEvents + RegisterForTableEvents {}
+impl<T: PublishTournamentEvents + RegisterForTableEvents> AccessTableEventBroadcast for T {}

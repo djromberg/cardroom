@@ -17,7 +17,8 @@ pub enum ObserveTableError {
 
 #[derive(Debug)]
 pub struct ObserveTableRequest<Receiver: ReceiveTableEvent> {
-    pub table_id: Uuid,
+    pub tournament_id: Uuid,
+    pub table_number: usize,
     pub receiver: Receiver,
 }
 
@@ -46,7 +47,7 @@ pub(in crate::application) fn observe_table<Receiver: ReceiveTableEvent, Broadca
     //       An authenticated request whose author sits at the table could
     //       receive private events.
     _ = auth_info.ensure_authenticated()?;
-    broadcast.register_for_table_events(request.table_id, request.receiver);
+    broadcast.register_for_table_events(request.tournament_id, request.table_number, request.receiver);
     Ok(ObserveTableResponse {})
 }
 
@@ -55,7 +56,7 @@ pub(in crate::application) fn observe_table<Receiver: ReceiveTableEvent, Broadca
 mod tests {
     use std::{cell::Cell, collections::HashMap};
 
-    use crate::{application::auth::AuthRole, domain::{TableEvent, TableEventType}};
+    use crate::{application::auth::AuthRole, domain::{TableEvent, TournamentEvent}};
 
     use super::*;
 
@@ -83,7 +84,7 @@ mod tests {
 
 
     struct DummyBroadcast {
-        receivers: HashMap<Uuid, DummyReceiver>,
+        receivers: HashMap<(Uuid, usize), DummyReceiver>,
     }
 
     impl DummyBroadcast {
@@ -91,26 +92,21 @@ mod tests {
             Self { receivers: HashMap::new() }
         }
 
-        fn receiver(&self, table_id: Uuid) -> Option<&DummyReceiver> {
-            self.receivers.get(&table_id)
+        fn receiver(&self, tournament_id: Uuid, table_number: usize) -> Option<&DummyReceiver> {
+            self.receivers.get(&(tournament_id, table_number))
         }
 
-        fn send(&self, event: TableEvent) {
-            let event_table_id = event.table_id;
-            for (table_id, receiver) in &self.receivers {
-                if table_id == &event_table_id {
-                    receiver.receive_table_event(event.clone());
-                }
-            }
+        fn send(&self, tournament_id: Uuid, table_number: usize, event: TableEvent) {
+            let receiver = &self.receivers[&(tournament_id, table_number)];
+            receiver.receive_table_event(event);
         }
     }
 
     impl RegisterForTableEvents for DummyBroadcast {
         type Receiver = DummyReceiver;
 
-        fn register_for_table_events(&mut self, table_id: Uuid, receiver: Self::Receiver) {
-            let real_receiver = DummyReceiver::new();
-            self.receivers.insert(table_id, real_receiver);
+        fn register_for_table_events(&mut self, tournament_id: Uuid, table_number: usize, receiver: Self::Receiver) {
+            self.receivers.insert((tournament_id, table_number), receiver);
         }
     }
 
@@ -119,13 +115,14 @@ mod tests {
         let mut broadcast = DummyBroadcast::new();
         let receiver = DummyReceiver::new();
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
-        let table_id = Uuid::new_v4();
-        let event = TableEvent { table_id, event_type: TableEventType::PlayerLeft { position: 0 } };
-        let request = ObserveTableRequest { table_id, receiver };
+        let event = TableEvent::PlayerLeft { position: 0 };
+        let tournament_id = Uuid::new_v4();
+        let table_number = 0;
+        let request = ObserveTableRequest { tournament_id, table_number, receiver };
         let result = observe_table(request, &auth_info, &mut broadcast);
         assert!(result.is_ok());
-        broadcast.send(event.clone());
-        let receiver = broadcast.receiver(table_id);
+        broadcast.send(tournament_id, table_number, event.clone());
+        let receiver = broadcast.receiver(tournament_id, table_number);
         assert!(receiver.is_some_and(|receiver| receiver.consume() == vec![event]));
     }
 }
