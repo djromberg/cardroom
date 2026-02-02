@@ -1,5 +1,6 @@
 mod create_tournament;
 mod join_tournament;
+mod observe_table;
 
 use crate::application::AuthError;
 

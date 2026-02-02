@@ -56,7 +56,7 @@ pub(in crate::application) fn observe_table<Receiver: ReceiveTableEvent, Broadca
 mod tests {
     use std::{cell::Cell, collections::HashMap};
 
-    use crate::{application::auth::AuthRole, domain::{TableEvent, TournamentEvent}};
+    use crate::{application::auth::AuthRole, domain::TableEvent};
 
     use super::*;
 

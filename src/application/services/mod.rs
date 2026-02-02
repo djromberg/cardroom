@@ -4,6 +4,7 @@ mod observe_table;
 
 pub use create_tournament::*;
 pub use join_tournament::*;
+pub use observe_table::*;
 
 
 pub trait ProvideServices: CreateTournament + JoinTournament {}
