@@ -7,5 +7,5 @@ pub use join_tournament::*;
 pub use observe_table::*;
 
 
-pub trait ProvideServices: CreateTournament + JoinTournament {}
-impl<T: CreateTournament + JoinTournament> ProvideServices for T {}
+pub trait ProvideServices: CreateTournament + JoinTournament + ObserveTable {}
+impl<T: CreateTournament + JoinTournament + ObserveTable> ProvideServices for T {}

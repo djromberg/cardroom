@@ -1,3 +1,4 @@
+mod broadcast;
 mod nickname;
 mod player;
 mod services;
@@ -5,6 +6,7 @@ mod table;
 mod tournament;
 mod traits;
 
+pub use broadcast::*;
 pub use nickname::*;
 pub use services::*;
 pub use table::*;
