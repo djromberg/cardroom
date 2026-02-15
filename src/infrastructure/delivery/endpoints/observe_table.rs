@@ -18,7 +18,7 @@ use std::sync::Arc;
 pub async fn handle_request(
     wsu: WebSocketUpgrade,
     extract::Path((tournament_id, table_number)): extract::Path<(Uuid, usize)>,
-    extract::State(service): extract::State<Arc<Mutex<impl ObserveTable + Send + 'static>>>,
+    extract::State(service): extract::State<Arc<Mutex<impl ObserveTable>>>,
 ) -> Result<Response, ObserveTableError> {
     log::info!("WEBSOCKET REQUEST");
 
