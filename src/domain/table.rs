@@ -38,6 +38,11 @@ pub enum TableError {
 }
 
 
+#[derive(Debug)]
+pub struct TableState {
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Table {
     seats: Vec<Option<Player>>,
@@ -51,6 +56,10 @@ impl Table {
             seats.push(None);
         }
         Self { seats, events: vec![] }
+    }
+
+    pub fn state(&self) -> TableState {
+        TableState {}
     }
 
     pub fn has_free_seat(&self) -> bool {

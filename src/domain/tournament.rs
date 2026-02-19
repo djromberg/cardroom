@@ -4,6 +4,7 @@ use super::table::TableError;
 use super::table::TableEvent;
 use super::table::TableSpecification;
 use super::table::TableSpecificationError;
+use super::table::TableState;
 
 use log::debug;
 use thiserror::Error;
@@ -58,6 +59,8 @@ pub enum TournamentError {
     PlayerAlreadyJoined,
     #[error("Player not present")]
     PlayerNotPresent,
+    #[error("No such table")]
+    NotSuchTable,
     #[error(transparent)]
     TableError(#[from] TableError),
 }
@@ -94,6 +97,11 @@ impl Tournament {
 
     pub fn is_ready_to_start(&self) -> bool {
         self.stage == TournamentStage::ReadyToStart
+    }
+
+    pub fn table_state(&self, table_number: usize) -> Result<TableState, TournamentError> {
+        let table = self.tables.get(table_number).ok_or_else(|| TournamentError::NotSuchTable)?;
+        Ok(table.state())
     }
 
     pub fn join(&mut self, player_id: Uuid, nickname: Nickname) -> Result<usize, TournamentError> {

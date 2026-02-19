@@ -2,7 +2,7 @@ use crate::application::AuthInfo;
 use crate::application::ObserveTableError;
 use crate::application::ObserveTable;
 use crate::application::ObserveTableRequest;
-use crate::domain::TableEventReceiver;
+use crate::application::ObserveTableResponse;
 
 use axum::body::Bytes;
 use axum::extract::WebSocketUpgrade;
@@ -32,18 +32,26 @@ pub async fn handle_request(
 
     let service = service.lock().await;
     let response = service.observe_table(request, &auth_info)?;
-    Ok(wsu.on_upgrade(|socket| observe_table(socket, response.receiver)))
+    Ok(wsu.on_upgrade(|socket| observe_table(socket, response)))
 }
 
 
-pub async fn observe_table(mut socket: WebSocket, mut receiver: TableEventReceiver) {
-    log::info!("receiving events ... ");
-    while let Ok(event) = receiver.recv().await {
-        // TODO: convert event to message
-        // TODO: error handling
-        log::info!("sending event {:?}", event);
-        _ = socket.send(extract::ws::Message::Ping(Bytes::new())).await;
+pub async fn observe_table(mut socket: WebSocket, response: ObserveTableResponse) {
+    log::info!("{:?} observes table", socket);
+    let _table_state = response.table_state;
+    // TODO: serialize table state and send it as first message
+    if socket.send(extract::ws::Message::Text("table_state".into())).await.is_ok() {
+        let mut receiver = response.receiver;
+        while let Ok(event) = receiver.recv().await {
+            // TODO: convert event to message
+            // TODO: error handling
+            log::info!("sending event {:?} to {:?}", event, socket);
+            if socket.send(extract::ws::Message::Text("table_event".into())).await.is_err() {
+                break;
+            }
+        }
     }
+    log::info!("{:?} finished observing table", socket);
 }
 
 
@@ -51,6 +59,8 @@ impl response::IntoResponse for ObserveTableError {
     fn into_response(self) -> response::Response {
         match self {
             ObserveTableError::AuthError(error) => error.into_response(),
+            ObserveTableError::LoadTournamentError(error) => error.into_response(),
+            ObserveTableError::TournamentError(error) => error.into_response(),
         }
     }
 }

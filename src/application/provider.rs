@@ -33,6 +33,6 @@ impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> JoinTo
 
 impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> ObserveTable for ServiceProvider<Repository, Broadcast> {
     fn observe_table(&self, request: ObserveTableRequest, auth_info: &AuthInfo) -> Result<ObserveTableResponse, ObserveTableError> {
-        observe_table(request, auth_info, &self.broadcast)
+        observe_table(request, auth_info, &self.repository, &self.broadcast)
     }
 }
