@@ -30,7 +30,7 @@ pub async fn handle_request(
         table_number,
     };
 
-    let service = service.lock().await;
+    let mut service = service.lock().await;
     let response = service.observe_table(request, &auth_info)?;
     Ok(wsu.on_upgrade(|socket| observe_table(socket, response)))
 }

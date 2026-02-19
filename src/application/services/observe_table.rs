@@ -38,7 +38,7 @@ pub struct ObserveTableResponse {
 
 pub trait ObserveTable {
     fn observe_table(
-        &self,
+        &mut self,
         request: ObserveTableRequest,
         auth_info: &AuthInfo
     ) -> Result<ObserveTableResponse, ObserveTableError>;
@@ -49,7 +49,7 @@ pub(in crate::application) fn observe_table<Repository: LoadTournament, Broadcas
     request: ObserveTableRequest,
     _auth_info: &AuthInfo,
     repository: &Repository,
-    broadcast: &Broadcast,
+    broadcast: &mut Broadcast,
 ) -> Result<ObserveTableResponse, ObserveTableError> {
     // TODO: Think about whether public / unauthenticated observation should
     //       also be handled here. We do not want to duplicate service code.
@@ -58,11 +58,8 @@ pub(in crate::application) fn observe_table<Repository: LoadTournament, Broadcas
     // _ = auth_info.ensure_authenticated()?;
     let tournament = repository.load_tournament(request.tournament_id)?;
     let table_state = tournament.table_state(request.table_number)?;
-    if let Some(receiver) = broadcast.subscribe_table_events(request.tournament_id, request.table_number) {
-        Ok(ObserveTableResponse { receiver, table_state })
-    } else {
-        Err(ObserveTableError::AuthError(AuthError::AuthenticationRequired))
-    }
+    let receiver = broadcast.subscribe_table_events(request.tournament_id, request.table_number);
+    Ok(ObserveTableResponse { receiver, table_state })
 }
 
 

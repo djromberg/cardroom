@@ -19,7 +19,7 @@ impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> Servic
 
 impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> CreateTournament for ServiceProvider<Repository, Broadcast> {
     fn create_tournament(&mut self, request: CreateTournamentRequest, auth_info: &AuthInfo) -> Result<CreateTournamentResponse, CreateTournamentError> {
-        create_tournament(request, auth_info, &mut self.repository, &mut self.broadcast)
+        create_tournament(request, auth_info, &mut self.repository)
     }
 }
 
@@ -32,7 +32,7 @@ impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> JoinTo
 
 
 impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> ObserveTable for ServiceProvider<Repository, Broadcast> {
-    fn observe_table(&self, request: ObserveTableRequest, auth_info: &AuthInfo) -> Result<ObserveTableResponse, ObserveTableError> {
-        observe_table(request, auth_info, &self.repository, &self.broadcast)
+    fn observe_table(&mut self, request: ObserveTableRequest, auth_info: &AuthInfo) -> Result<ObserveTableResponse, ObserveTableError> {
+        observe_table(request, auth_info, &self.repository, &mut self.broadcast)
     }
 }

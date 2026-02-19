@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use log::info;
 use uuid::Uuid;
 
-use crate::domain::RegisterTableEventReceivers;
 use crate::domain::PublishTournamentEvents;
 use crate::domain::SubscribeTableEvents;
 use crate::domain::TournamentEvent;
@@ -31,18 +30,6 @@ impl TableEventBroadcast {
 }
 
 
-impl RegisterTableEventReceivers for TableEventBroadcast {
-    fn register_table_event_receivers(&mut self, tournament_id: Uuid, table_count: usize) {
-        for i in 0..table_count {
-            let key = (tournament_id, i);
-            let sender = TableEventSender::new(16);
-            let old = self.senders.insert(key, sender);
-            assert!(old.is_none());
-        }
-    }
-}
-
-
 impl PublishTournamentEvents for TableEventBroadcast {
     fn publish_tournament_events(&self, events: Vec<TournamentEvent>) {
         info!("publishing {:?}", events);
@@ -61,13 +48,16 @@ impl PublishTournamentEvents for TableEventBroadcast {
 
 
 impl SubscribeTableEvents for TableEventBroadcast {
-    fn subscribe_table_events(&self, tournament_id: Uuid, table_number: usize) -> Option<TableEventReceiver> {
+    fn subscribe_table_events(&mut self, tournament_id: Uuid, table_number: usize) -> TableEventReceiver {
         let key = (tournament_id, table_number);
 
         if let Some(sender) = self.senders.get(&key) {
-            Some(sender.subscribe())
+            sender.subscribe()
         } else {
-            None
+            let sender = TableEventSender::new(16);
+            let receiver = sender.subscribe();
+            self.senders.insert(key, sender);
+            receiver
         }
     }
 }

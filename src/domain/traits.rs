@@ -51,20 +51,15 @@ use crate::domain::TableEventReceiver;
 use crate::domain::TournamentEvent;
 
 
-pub trait RegisterTableEventReceivers {
-    fn register_table_event_receivers(&mut self, tournament_id: Uuid, table_count: usize);
-}
-
-
 pub trait PublishTournamentEvents {
     fn publish_tournament_events(&self, events: Vec<TournamentEvent>);
 }
 
 
 pub trait SubscribeTableEvents {
-    fn subscribe_table_events(&self, tournament_id: Uuid, table_number: usize) -> Option<TableEventReceiver>;
+    fn subscribe_table_events(&mut self, tournament_id: Uuid, table_number: usize) -> TableEventReceiver;
 }
 
 
-pub trait AccessTableEventBroadcast: PublishTournamentEvents + SubscribeTableEvents + RegisterTableEventReceivers {}
-impl<T: PublishTournamentEvents + SubscribeTableEvents + RegisterTableEventReceivers> AccessTableEventBroadcast for T {}
+pub trait AccessTableEventBroadcast: PublishTournamentEvents + SubscribeTableEvents {}
+impl<T: PublishTournamentEvents + SubscribeTableEvents> AccessTableEventBroadcast for T {}
