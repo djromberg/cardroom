@@ -31,6 +31,10 @@ impl AxumServer {
         let router = Router::new()
             .route(
                 "/tournaments",
+                routing::get(endpoints::find_tournaments)
+            )
+            .route(
+                "/tournaments",
                 routing::post(endpoints::create_tournament)
             )
             .route(

@@ -1,9 +1,11 @@
 mod create_tournament;
+mod find_tournaments;
 mod join_tournament;
 mod observe_table;
 
 use crate::application::AuthError;
 use crate::domain::LoadTournamentError;
+use crate::domain::QueryTournamentsError;
 use crate::domain::TournamentError;
 
 use axum::response::IntoResponse;
@@ -12,6 +14,7 @@ use axum::http::StatusCode;
 
 
 pub use create_tournament::handle_request as create_tournament;
+pub use find_tournaments::handle_request as find_tournaments;
 pub use join_tournament::handle_request as join_tournament;
 pub use observe_table::handle_request as observe_table;
 
@@ -36,6 +39,15 @@ impl IntoResponse for LoadTournamentError {
         match self {
             LoadTournamentError::TournamentNotFound => build_response(StatusCode::NOT_FOUND, self.to_string()),
             _ => build_response(StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        }
+    }
+}
+
+
+impl IntoResponse for QueryTournamentsError {
+    fn into_response(self) -> Response {
+        match self {
+            QueryTournamentsError::DatabaseQueryError => build_response(StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }
 }

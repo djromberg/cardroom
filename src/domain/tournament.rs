@@ -48,6 +48,7 @@ pub enum TournamentStage {
     WaitingForPlayers,
     ReadyToStart,
     Running,
+    Finished,
 }
 
 
@@ -91,6 +92,22 @@ impl Tournament {
 
     pub fn table_seat_count(&self) -> u8 {
         self.tables[0].seat_count()
+    }
+
+    pub fn player_count(&self) -> usize {
+        self.tables.iter().map(|table| table.player_count() as usize).sum()
+    }
+
+    pub fn is_waiting_for_players(&self) -> bool {
+        self.stage == TournamentStage::WaitingForPlayers
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.stage == TournamentStage::Finished
+    }
+
+    pub fn players_table_number(&self, player_id: Uuid) -> Option<usize> {
+        self.tables.iter().position(|table| table.has_player(player_id))
     }
 
     pub fn is_ready_to_start(&self) -> bool {

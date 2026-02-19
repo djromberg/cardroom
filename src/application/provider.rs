@@ -17,6 +17,13 @@ impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> Servic
 }
 
 
+impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> FindTournaments for ServiceProvider<Repository, Broadcast> {
+    fn find_tournaments(&self, request: FindTournamentsRequest, auth_info: &AuthInfo) -> Result<FindTournamentsResponse, FindTournamentsError> {
+        find_tournaments(request, auth_info, &self.repository)
+    }
+}
+
+
 impl<Repository: AccessTournaments, Broadcast: AccessTableEventBroadcast> CreateTournament for ServiceProvider<Repository, Broadcast> {
     fn create_tournament(&mut self, request: CreateTournamentRequest, auth_info: &AuthInfo) -> Result<CreateTournamentResponse, CreateTournamentError> {
         create_tournament(request, auth_info, &mut self.repository)
