@@ -4,7 +4,6 @@ use crate::application::ObserveTable;
 use crate::application::ObserveTableRequest;
 use crate::application::ObserveTableResponse;
 
-use axum::body::Bytes;
 use axum::extract::WebSocketUpgrade;
 use axum::extract::ws::WebSocket;
 use axum::response::Response;

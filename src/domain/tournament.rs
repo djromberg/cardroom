@@ -57,8 +57,6 @@ pub enum TournamentError {
     TournamentAlreadyStarted,
     #[error("Player already joined")]
     PlayerAlreadyJoined,
-    #[error("Player not present")]
-    PlayerNotPresent,
     #[error("No such table")]
     NotSuchTable,
     #[error(transparent)]
@@ -121,15 +119,6 @@ impl Tournament {
         }
     }
 
-    // pub fn leave(&mut self, player_id: Uuid) -> Result<(), TournamentError> {
-    //     debug!("leave player_id {} within tournament {}", player_id, self.id);
-    //     if self.stage == TournamentStage::Running {
-    //         Err(TournamentError::TournamentAlreadyStarted)
-    //     } else {
-    //         self.leave_player(player_id)
-    //     }
-    // }
-
     pub fn start(&mut self) {
         assert!(self.is_ready_to_start());
         for (table_number, table) in self.tables.iter_mut().enumerate() {
@@ -171,20 +160,6 @@ impl Tournament {
         table_number
     }
 
-    // fn leave_player(&mut self, player_id: Uuid) -> Result<(), TournamentError> {
-    //     let table_events = {
-    //         if let Some(table) = self.find_players_table_mut(player_id) {
-    //             table.stand_up(player_id);
-    //             Ok(table.collect_events())
-    //         } else {
-    //             Err(TournamentError::PlayerNotPresent)
-    //         }
-    //     }?;
-    //     self.events.extend(table_events);
-    //     self.stage = TournamentStage::WaitingForPlayers;
-    //     Ok(())
-    // }
-
     fn all_seats_are_taken(&self) -> bool {
         self.tables.iter().all(|table| !table.has_free_seat())
     }
@@ -193,24 +168,9 @@ impl Tournament {
         self.tables.iter().enumerate().find(|(_, table)| table.has_free_seat()).map(|(index, _)| index).unwrap()
     }
 
-    fn find_players_table_mut(&mut self, player_id: Uuid) -> Option<&mut Table> {
-        self.tables.iter_mut().find(|table| table.has_player(player_id))
-    }
-
     fn has_player(&self, player_id: Uuid) -> bool {
         self.tables.iter().any(|table| table.has_player(player_id))
     }
-
-    // fn collect_table_events(&mut self) {
-    //     for (table_number, table) in &mut self.tables.iter_mut().enumerate() {
-    //         let table_events = table.collect_events();
-    //         let tournament_events = table_events.iter().map(|table_event| TournamentEvent {
-    //             tournament_id: self.id,
-    //             event_type: TournamentEventType::TableEvent { table_number, event_type: table_event.clone() },
-    //         });
-    //         self.events.extend(tournament_events);
-    //     }
-    // }
 }
 
 impl PartialEq for Tournament {
