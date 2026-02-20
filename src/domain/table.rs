@@ -74,13 +74,13 @@ impl Table {
         self.seats.iter().flatten().count() as u8
     }
 
-    pub fn has_player(&self, player_id: Uuid) -> bool {
-        self.seats.iter().flatten().any(|player| player.id() == player_id)
+    pub fn has_player(&self, account_id: Uuid) -> bool {
+        self.seats.iter().flatten().any(|player| player.account_id() == account_id)
     }
 
-    pub fn sit_down(&mut self, player_id: Uuid, nickname: Nickname, stack: u32) {
+    pub fn sit_down(&mut self, account_id: Uuid, nickname: Nickname, stack: u32) {
         let position = self.seats.iter_mut().position(|seat| seat.is_none()).unwrap();
-        let player = Player::new(player_id, nickname.clone(), stack);
+        let player = Player::new(account_id, nickname.clone(), stack);
         _ = self.seats[position].insert(player);
         self.events.push(
             TableEvent::PlayerSeated {
@@ -91,8 +91,8 @@ impl Table {
         );
     }
 
-    pub fn stand_up(&mut self, player_id: Uuid) {
-        let position = self.player_position(player_id).unwrap();
+    pub fn stand_up(&mut self, account_id: Uuid) {
+        let position = self.player_position(account_id).unwrap();
         self.seats[position].take();
         self.events.push(
             TableEvent::PlayerLeft {
@@ -118,9 +118,9 @@ impl Table {
         std::mem::take(&mut self.events)
     }
 
-    fn player_position(&self, player_id: Uuid) -> Option<usize> {
+    fn player_position(&self, account_id: Uuid) -> Option<usize> {
         self.seats.iter().position(|seat| {
-            seat.as_ref().is_some_and(|player| player.id() == player_id)
+            seat.as_ref().is_some_and(|player| player.account_id() == account_id)
         })
     }
 }

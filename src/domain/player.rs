@@ -5,19 +5,18 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct Player {
-    id: Uuid,
+    account_id: Uuid,
     nickname: Nickname,
     stack: u32,
 }
 
 impl Player {
-    pub fn new(id: Uuid, nickname: Nickname, stack: u32) -> Self {
+    pub fn new(account_id: Uuid, nickname: Nickname, stack: u32) -> Self {
         assert!(stack > 0);
-        // Self { id, nickname, stack }#
-        Self { id, nickname, stack }
+        Self { account_id, nickname, stack }
     }
 
-    pub fn id(&self) -> Uuid {
-        self.id
+    pub fn account_id(&self) -> Uuid {
+        self.account_id
     }
 }

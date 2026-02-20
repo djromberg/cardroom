@@ -106,8 +106,8 @@ impl Tournament {
         self.stage == TournamentStage::Finished
     }
 
-    pub fn players_table_number(&self, player_id: Uuid) -> Option<usize> {
-        self.tables.iter().position(|table| table.has_player(player_id))
+    pub fn players_table_number(&self, account_id: Uuid) -> Option<usize> {
+        self.tables.iter().position(|table| table.has_player(account_id))
     }
 
     pub fn is_ready_to_start(&self) -> bool {
@@ -119,13 +119,13 @@ impl Tournament {
         Ok(table.state())
     }
 
-    pub fn join(&mut self, player_id: Uuid, nickname: Nickname) -> Result<usize, TournamentError> {
-        debug!("join player_id {} with nickname {} within tournament {}", player_id, nickname, self.id);
+    pub fn join(&mut self, account_id: Uuid, nickname: Nickname) -> Result<usize, TournamentError> {
+        debug!("join account_id {} with nickname {} within tournament {}", account_id, nickname, self.id);
         if self.stage == TournamentStage::WaitingForPlayers {
-            if self.has_player(player_id) {
+            if self.has_player(account_id) {
                 Err(TournamentError::PlayerAlreadyJoined)
             } else {
-                let table_number = self.seat_player(player_id, nickname);
+                let table_number = self.seat_player(account_id, nickname);
                 if self.all_seats_are_taken() {
                     self.stage = TournamentStage::ReadyToStart;
                 }
@@ -159,11 +159,11 @@ impl Tournament {
         std::mem::take(&mut self.events)
     }
 
-    fn seat_player(&mut self, player_id: Uuid, nickname: Nickname) -> usize {
+    fn seat_player(&mut self, account_id: Uuid, nickname: Nickname) -> usize {
         let (table_number, table_events) = {
             let table_number = self.find_table_with_free_seats();
             let table = &mut self.tables[table_number];
-            table.sit_down(player_id, nickname.clone(), 1500);
+            table.sit_down(account_id, nickname.clone(), 1500);
             let table_events = table.collect_events();
             (table_number, table_events)
         };
@@ -185,8 +185,8 @@ impl Tournament {
         self.tables.iter().enumerate().find(|(_, table)| table.has_free_seat()).map(|(index, _)| index).unwrap()
     }
 
-    fn has_player(&self, player_id: Uuid) -> bool {
-        self.tables.iter().any(|table| table.has_player(player_id))
+    fn has_player(&self, account_id: Uuid) -> bool {
+        self.tables.iter().any(|table| table.has_player(account_id))
     }
 }
 
