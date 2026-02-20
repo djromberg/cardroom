@@ -33,7 +33,7 @@ pub enum TournamentStage {
 
 #[derive(Debug)]
 pub struct TournamentInfo {
-    pub id: Uuid,
+    pub tournament_id: Uuid,
     pub table_count: usize,
     pub table_seat_count: u8,
     pub player_count: usize,
@@ -63,7 +63,7 @@ pub(in crate::application) fn find_tournaments<Repository: QueryTournaments>(
 
     let infos = tournaments.iter().map(|tournament| {
         TournamentInfo {
-            id: tournament.id(),
+            tournament_id: tournament.id(),
             table_count: tournament.table_count(),
             table_seat_count: tournament.table_seat_count(),
             player_count: tournament.player_count(),
