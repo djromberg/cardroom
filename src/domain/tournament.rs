@@ -95,7 +95,6 @@ impl Tournament {
     pub fn restore(events: impl IntoIterator<Item = TournamentEvent>) -> Self {
         let mut event_iterator = events.into_iter();
         let first_event = event_iterator.next().unwrap();
-        assert!(matches!(first_event, TournamentEvent::TournamentCreated { .. }));
         let mut tournament = match first_event {
             TournamentEvent::TournamentCreated { id, spec } => {
                 Self::create(id, &spec)
