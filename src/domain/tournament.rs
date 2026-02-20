@@ -21,7 +21,7 @@ pub enum TournamentSpecificationError {
     TableSpecificationError(#[from] TableSpecificationError)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TournamentSpecification {
     table_count: u8,
     table_spec: TableSpecification,
@@ -65,25 +65,62 @@ pub enum TournamentError {
 }
 
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TournamentEvent {
+    TournamentCreated {
+        id: Uuid,
+        spec: TournamentSpecification
+    },
+    PlayerJoined {
+        account_id: Uuid,
+        nickname: Nickname,
+    }
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Tournament {
     id: Uuid,
     stage: TournamentStage,
     tables: Vec<Table>,
     messages: Vec<TournamentMessage>,
+    events: Vec<TournamentEvent>,
 }
 
 impl Tournament {
     pub fn new(spec: &TournamentSpecification) -> Self {
-        let mut tables = vec![];
-        for _ in 0..spec.table_count {
-            tables.push(Table::new(&spec.table_spec));
+        Self::create(Uuid::new_v4(), spec)
+    }
+
+    pub fn restore(events: impl IntoIterator<Item = TournamentEvent>) -> Self {
+        let mut event_iterator = events.into_iter();
+        let first_event = event_iterator.next().unwrap();
+        assert!(matches!(first_event, TournamentEvent::TournamentCreated { .. }));
+        let mut tournament = match first_event {
+            TournamentEvent::TournamentCreated { id, spec } => {
+                Self::create(id, &spec)
+            },
+            _ => panic!("programming error")
+        };
+        for event in event_iterator {
+            tournament.apply(event);
         }
-        Self { id: Uuid::new_v4(), stage: TournamentStage::WaitingForPlayers, tables, messages: vec![] }
+        tournament
+    }
+
+    pub fn events(&self) -> Vec<TournamentEvent> {
+        self.events.clone()
     }
 
     pub fn id(&self) -> Uuid {
         self.id
+    }
+
+    pub fn spec(&self) -> TournamentSpecification {
+        TournamentSpecification {
+            table_count: self.tables.len() as u8,
+            table_spec: self.tables[0].spec(),
+        }
     }
 
     pub fn table_count(&self) -> usize {
@@ -125,7 +162,7 @@ impl Tournament {
             if self.has_player(account_id) {
                 Err(TournamentError::PlayerAlreadyJoined)
             } else {
-                let table_number = self.seat_player(account_id, nickname);
+                let table_number = self.seat_player(account_id, nickname.clone());
                 if self.all_seats_are_taken() {
                     self.stage = TournamentStage::ReadyToStart;
                 }
@@ -159,6 +196,29 @@ impl Tournament {
         std::mem::take(&mut self.messages)
     }
 
+    fn create(id: Uuid, spec: &TournamentSpecification) -> Self {
+        let mut tables = vec![];
+        for _ in 0..spec.table_count {
+            tables.push(Table::new(&spec.table_spec));
+        }
+        Self {
+            id,
+            stage: TournamentStage::WaitingForPlayers,
+            tables,
+            messages: vec![],
+            events: vec![TournamentEvent::TournamentCreated { id, spec: spec.clone() }],
+        }
+    }
+
+    fn apply(&mut self, event: TournamentEvent) {
+        match event {
+            TournamentEvent::PlayerJoined { account_id, nickname } => {
+                _ = self.join(account_id, nickname).unwrap()
+            },
+            TournamentEvent::TournamentCreated { .. } => panic!("programming error")
+        }
+    }
+
     fn seat_player(&mut self, account_id: Uuid, nickname: Nickname) -> usize {
         let (table_number, table_messages) = {
             let table_number = self.find_table_with_free_seats();
@@ -174,6 +234,7 @@ impl Tournament {
             },
         });
         self.messages.extend(tournament_messages);
+        self.events.push(TournamentEvent::PlayerJoined { account_id, nickname });
         table_number
     }
 
@@ -210,4 +271,43 @@ pub enum TournamentMessageType {
         table_number: usize,
         message_type: TableMessage,
     },
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tournament_creation_and_join() {
+        let spec = TournamentSpecification::new(1, 3).unwrap();
+        let tournament = Tournament::new(&spec);
+        assert_eq!(tournament.events(), vec![TournamentEvent::TournamentCreated { id: tournament.id(), spec: spec.clone() }]);
+        let mut tournament = tournament;
+        let account_id = Uuid::new_v4();
+        let nickname = Nickname::new("Daniel").unwrap();
+        let _ = tournament.join(account_id, nickname.clone()); // TODO: do not return value in join
+        assert_eq!(tournament.events(), vec![
+            TournamentEvent::TournamentCreated { id: tournament.id(), spec },
+            TournamentEvent::PlayerJoined { account_id, nickname }
+        ]);
+    }
+
+    #[test]
+    fn tournament_restore() {
+        let spec = TournamentSpecification::new(1, 3).unwrap();
+        let tournament_id = Uuid::new_v4();
+        let account_id = Uuid::new_v4();
+        let nickname = Nickname::new("Daniel").unwrap();
+        let events = vec![
+            TournamentEvent::TournamentCreated { id: tournament_id, spec: spec.clone() },
+            TournamentEvent::PlayerJoined { account_id, nickname }
+        ];
+        let tournament = Tournament::restore(events.clone());
+        assert_eq!(tournament.id(), tournament_id);
+        assert_eq!(tournament.spec(), spec);
+        assert!(tournament.has_player(account_id));
+        assert_eq!(tournament.events(), events);
+    }
 }

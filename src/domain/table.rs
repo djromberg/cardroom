@@ -13,7 +13,7 @@ pub enum TableSpecificationError {
     TooManySeats { found: u8 }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TableSpecification {
     seat_count: u8,
 }
@@ -56,6 +56,10 @@ impl Table {
             seats.push(None);
         }
         Self { seats, messages: vec![] }
+    }
+
+    pub fn spec(&self) -> TableSpecification {
+        TableSpecification { seat_count: self.seats.len() as u8 }
     }
 
     pub fn state(&self) -> TableState {
