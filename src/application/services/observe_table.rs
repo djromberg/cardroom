@@ -2,8 +2,8 @@ use crate::application::AuthError;
 use crate::application::AuthInfo;
 use crate::domain::LoadTournament;
 use crate::domain::LoadTournamentError;
-use crate::domain::SubscribeTableEvents;
-use crate::domain::TableEventReceiver;
+use crate::domain::SubscribeTableMessages;
+use crate::domain::TableMessageReceiver;
 use crate::domain::TableState;
 use crate::domain::TournamentError;
 
@@ -31,7 +31,7 @@ pub struct ObserveTableRequest {
 
 #[derive(Debug)]
 pub struct ObserveTableResponse {
-    pub receiver: TableEventReceiver,
+    pub receiver: TableMessageReceiver,
     pub table_state: TableState,
 }
 
@@ -45,7 +45,7 @@ pub trait ObserveTable {
 }
 
 
-pub(in crate::application) fn observe_table<Repository: LoadTournament, Broadcast: SubscribeTableEvents>(
+pub(in crate::application) fn observe_table<Repository: LoadTournament, Broadcast: SubscribeTableMessages>(
     request: ObserveTableRequest,
     _auth_info: &AuthInfo,
     repository: &Repository,
@@ -54,11 +54,11 @@ pub(in crate::application) fn observe_table<Repository: LoadTournament, Broadcas
     // TODO: Think about whether public / unauthenticated observation should
     //       also be handled here. We do not want to duplicate service code.
     //       An authenticated request whose author sits at the table could
-    //       receive private events.
+    //       receive private messages.
     // _ = auth_info.ensure_authenticated()?;
     let tournament = repository.load_tournament(request.tournament_id)?;
     let table_state = tournament.table_state(request.table_number)?;
-    let receiver = broadcast.subscribe_table_events(request.tournament_id, request.table_number);
+    let receiver = broadcast.subscribe_table_messages(request.tournament_id, request.table_number);
     Ok(ObserveTableResponse { receiver, table_state })
 }
 

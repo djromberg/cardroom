@@ -1,7 +1,7 @@
 use super::nickname::Nickname;
 use super::table::Table;
 use super::table::TableError;
-use super::table::TableEvent;
+use super::table::TableMessage;
 use super::table::TableSpecification;
 use super::table::TableSpecificationError;
 use super::table::TableState;
@@ -70,7 +70,7 @@ pub struct Tournament {
     id: Uuid,
     stage: TournamentStage,
     tables: Vec<Table>,
-    events: Vec<TournamentEvent>,
+    messages: Vec<TournamentMessage>,
 }
 
 impl Tournament {
@@ -79,7 +79,7 @@ impl Tournament {
         for _ in 0..spec.table_count {
             tables.push(Table::new(&spec.table_spec));
         }
-        Self { id: Uuid::new_v4(), stage: TournamentStage::WaitingForPlayers, tables, events: vec![] }
+        Self { id: Uuid::new_v4(), stage: TournamentStage::WaitingForPlayers, tables, messages: vec![] }
     }
 
     pub fn id(&self) -> Uuid {
@@ -141,39 +141,39 @@ impl Tournament {
         for (table_number, table) in self.tables.iter_mut().enumerate() {
             table.start_game();
 
-            let table_events = table.collect_events();
-            let tournament_events = table_events.iter().map(|table_event|
-                TournamentEvent {
+            let table_messages = table.collect_messages();
+            let tournament_messages = table_messages.iter().map(|table_message|
+                TournamentMessage {
                     tournament_id: self.id,
-                    event_type: TournamentEventType::TableEvent {
-                        table_number, event_type: table_event.clone()
+                    message_type: TournamentMessageType::TableMessage {
+                        table_number, message_type: table_message.clone()
                     },
                 }
             );
-            self.events.extend(tournament_events);
+            self.messages.extend(tournament_messages);
         }
         self.stage = TournamentStage::Running;
     }
 
-    pub fn collect_events(&mut self) -> Vec<TournamentEvent> {
-        std::mem::take(&mut self.events)
+    pub fn collect_messages(&mut self) -> Vec<TournamentMessage> {
+        std::mem::take(&mut self.messages)
     }
 
     fn seat_player(&mut self, account_id: Uuid, nickname: Nickname) -> usize {
-        let (table_number, table_events) = {
+        let (table_number, table_messages) = {
             let table_number = self.find_table_with_free_seats();
             let table = &mut self.tables[table_number];
             table.sit_down(account_id, nickname.clone(), 1500);
-            let table_events = table.collect_events();
-            (table_number, table_events)
+            let table_messages = table.collect_messages();
+            (table_number, table_messages)
         };
-        let tournament_events = table_events.iter().map(|table_event| TournamentEvent {
+        let tournament_messages = table_messages.iter().map(|table_message| TournamentMessage {
             tournament_id: self.id,
-            event_type: TournamentEventType::TableEvent {
-                table_number, event_type: table_event.clone()
+            message_type: TournamentMessageType::TableMessage {
+                table_number, message_type: table_message.clone()
             },
         });
-        self.events.extend(tournament_events);
+        self.messages.extend(tournament_messages);
         table_number
     }
 
@@ -198,16 +198,16 @@ impl PartialEq for Tournament {
 
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TournamentEvent {
+pub struct TournamentMessage {
     pub tournament_id: Uuid,
-    pub event_type: TournamentEventType,
+    pub message_type: TournamentMessageType,
 }
 
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TournamentEventType {
-    TableEvent {
+pub enum TournamentMessageType {
+    TableMessage {
         table_number: usize,
-        event_type: TableEvent,
+        message_type: TableMessage,
     },
 }

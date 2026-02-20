@@ -41,11 +41,10 @@ pub async fn observe_table(mut socket: WebSocket, response: ObserveTableResponse
     // TODO: serialize table state and send it as first message
     if socket.send(extract::ws::Message::Text("table_state".into())).await.is_ok() {
         let mut receiver = response.receiver;
-        while let Ok(event) = receiver.recv().await {
-            // TODO: convert event to message
+        while let Ok(message) = receiver.recv().await {
             // TODO: error handling
-            log::info!("sending event {:?} to {:?}", event, socket);
-            if socket.send(extract::ws::Message::Text("table_event".into())).await.is_err() {
+            log::info!("sending message {:?} to {:?}", message, socket);
+            if socket.send(extract::ws::Message::Text("table_message".into())).await.is_err() {
                 break;
             }
         }

@@ -46,7 +46,7 @@ pub struct TableState {
 #[derive(Debug, Clone)]
 pub struct Table {
     seats: Vec<Option<Player>>,
-    events: Vec<TableEvent>,
+    messages: Vec<TableMessage>,
 }
 
 impl Table {
@@ -55,7 +55,7 @@ impl Table {
         for _ in 0..spec.seat_count {
             seats.push(None);
         }
-        Self { seats, events: vec![] }
+        Self { seats, messages: vec![] }
     }
 
     pub fn state(&self) -> TableState {
@@ -82,8 +82,8 @@ impl Table {
         let position = self.seats.iter_mut().position(|seat| seat.is_none()).unwrap();
         let player = Player::new(account_id, nickname.clone(), stack);
         _ = self.seats[position].insert(player);
-        self.events.push(
-            TableEvent::PlayerSeated {
+        self.messages.push(
+            TableMessage::PlayerSeated {
                 nickname,
                 stack,
                 position,
@@ -94,8 +94,8 @@ impl Table {
     pub fn stand_up(&mut self, account_id: Uuid) {
         let position = self.player_position(account_id).unwrap();
         self.seats[position].take();
-        self.events.push(
-            TableEvent::PlayerLeft {
+        self.messages.push(
+            TableMessage::PlayerLeft {
                 position,
             }
         );
@@ -109,13 +109,13 @@ impl Table {
     pub fn start_game(&mut self) {
         assert!(self.can_start_game());
         // TODO: really implement game logic
-        self.events.push(
-            TableEvent::GameStarted { button: 0 }
+        self.messages.push(
+            TableMessage::GameStarted { button: 0 }
         )
     }
 
-    pub fn collect_events(&mut self) -> Vec<TableEvent> {
-        std::mem::take(&mut self.events)
+    pub fn collect_messages(&mut self) -> Vec<TableMessage> {
+        std::mem::take(&mut self.messages)
     }
 
     fn player_position(&self, account_id: Uuid) -> Option<usize> {
@@ -127,7 +127,7 @@ impl Table {
 
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TableEvent {
+pub enum TableMessage {
     PlayerSeated {
         nickname: Nickname,
         stack: u32,

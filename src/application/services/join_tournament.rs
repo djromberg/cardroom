@@ -5,11 +5,11 @@ use crate::domain::LoadTournament;
 use crate::domain::LoadTournamentError;
 use crate::domain::Nickname;
 use crate::domain::NicknameError;
-use crate::domain::PublishTournamentEvents;
+use crate::domain::PublishTournamentMessages;
 use crate::domain::SaveTournament;
 use crate::domain::SaveTournamentError;
 use crate::domain::TournamentError;
-use crate::domain::save_tournament_and_publish_events;
+use crate::domain::save_tournament_and_publish_messages;
 
 use thiserror::Error;
 use uuid::Uuid;
@@ -48,7 +48,7 @@ pub trait JoinTournament {
 }
 
 
-pub(in crate::application) fn join_tournament<Repository: LoadTournament + SaveTournament, Publisher: PublishTournamentEvents>(
+pub(in crate::application) fn join_tournament<Repository: LoadTournament + SaveTournament, Publisher: PublishTournamentMessages>(
     request: JoinTournamentRequest,
     auth_info: &AuthInfo,
     repository: &mut Repository,
@@ -58,7 +58,7 @@ pub(in crate::application) fn join_tournament<Repository: LoadTournament + SaveT
     let nickname = Nickname::new(request.nickname)?;
     let mut tournament = repository.load_tournament(request.tournament_id)?;
     let table_number = tournament.join(account_id, nickname)?;
-    save_tournament_and_publish_events(tournament, repository, publisher)?;
+    save_tournament_and_publish_messages(tournament, repository, publisher)?;
     Ok(JoinTournamentResponse { table_number })
 }
 
@@ -68,7 +68,7 @@ mod tests {
     use std::cell::Cell;
 
     use crate::application::AuthRole;
-    use crate::domain::TournamentEvent;
+    use crate::domain::TournamentMessage;
     use crate::domain::Tournament;
     use crate::domain::TournamentSpecification;
 
@@ -131,22 +131,22 @@ mod tests {
 
 
     struct DummyPublisher {
-        events: Cell<Vec<TournamentEvent>>
+        messages: Cell<Vec<TournamentMessage>>
     }
 
     impl DummyPublisher {
         fn new() -> Self {
-            Self { events: Cell::new(vec![]) }
+            Self { messages: Cell::new(vec![]) }
         }
 
-        fn consume(&self) -> Vec<TournamentEvent> {
-            self.events.take()
+        fn consume(&self) -> Vec<TournamentMessage> {
+            self.messages.take()
         }
     }
 
-    impl PublishTournamentEvents for DummyPublisher {
-        fn publish_tournament_events(&self, events: Vec<TournamentEvent>) {
-            self.events.replace(events);
+    impl PublishTournamentMessages for DummyPublisher {
+        fn publish_tournament_messages(&self, messages: Vec<TournamentMessage>) {
+            self.messages.replace(messages);
         }
     }
 
@@ -227,7 +227,7 @@ mod tests {
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
         let result = join_tournament(request, &auth_info, &mut repository, &publisher);
         assert!(result.is_ok_and(|response| response.table_number == 0));
-        let table_events = publisher.consume();
-        assert_eq!(table_events.len(), 1);
+        let tournament_messages = publisher.consume();
+        assert_eq!(tournament_messages.len(), 1);
     }
 }

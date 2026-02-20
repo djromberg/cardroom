@@ -47,19 +47,19 @@ impl<T: LoadTournament + SaveTournament + QueryTournaments> AccessTournaments fo
 
 // ----------------------- tryout:
 
-use crate::domain::TableEventReceiver;
-use crate::domain::TournamentEvent;
+use crate::domain::TableMessageReceiver;
+use crate::domain::TournamentMessage;
 
 
-pub trait PublishTournamentEvents {
-    fn publish_tournament_events(&self, events: Vec<TournamentEvent>);
+pub trait PublishTournamentMessages {
+    fn publish_tournament_messages(&self, messages: Vec<TournamentMessage>);
 }
 
 
-pub trait SubscribeTableEvents {
-    fn subscribe_table_events(&mut self, tournament_id: Uuid, table_number: usize) -> TableEventReceiver;
+pub trait SubscribeTableMessages {
+    fn subscribe_table_messages(&mut self, tournament_id: Uuid, table_number: usize) -> TableMessageReceiver;
 }
 
 
-pub trait AccessTableEventBroadcast: PublishTournamentEvents + SubscribeTableEvents {}
-impl<T: PublishTournamentEvents + SubscribeTableEvents> AccessTableEventBroadcast for T {}
+pub trait AccessTableMessageBroadcast: PublishTournamentMessages + SubscribeTableMessages {}
+impl<T: PublishTournamentMessages + SubscribeTableMessages> AccessTableMessageBroadcast for T {}
