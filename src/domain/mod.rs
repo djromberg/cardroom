@@ -5,6 +5,7 @@ mod services;
 mod table;
 mod tournament;
 mod traits;
+mod tryout;
 
 pub use broadcast::*;
 pub use nickname::*;
