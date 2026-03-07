@@ -4,10 +4,11 @@ use crate::application::AuthInfo;
 use crate::application::CreateTournamentRequest;
 use crate::application::CreateTournamentError;
 use crate::application::CreateTournament;
+use crate::application::TournamentSummary;
 
 use axum::http::StatusCode;
 use axum::{extract, Json, response};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -15,16 +16,14 @@ use std::sync::Arc;
 
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RequestBody {
     table_count: u32,
     table_seat_count: u8
 }
 
 
-#[derive(Debug, Serialize)]
-pub struct ResponseBody {
-    tournament_id: Uuid,
-}
+pub type ResponseBody = TournamentSummary;
 
 
 pub async fn handle_request(
@@ -38,7 +37,7 @@ pub async fn handle_request(
 
     let mut service = service.lock().await;
     let response = service.create_tournament(request, &auth_info)?;
-    Ok(Json(ResponseBody { tournament_id: response.tournament_id }))
+    Ok(Json(response))
 }
 
 

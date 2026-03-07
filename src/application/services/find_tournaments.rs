@@ -5,8 +5,9 @@ use crate::domain::QueryTournaments;
 use crate::domain::QueryTournamentsError;
 use crate::domain::Tournament;
 
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
-use uuid::Uuid;
 
 
 #[derive(Debug, Error)]
@@ -18,33 +19,29 @@ pub enum FindTournamentsError {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FindTournamentsRequest {
+    min_table_count: Option<u16>,
+    max_table_count: Option<u16>
 }
 
 
-#[derive(Debug)]
-pub enum TournamentStage {
-    WaitingForPlayers(Option<usize>), // Not yet started, player might have joined table numer (usize)
-    Running(Option<usize>),           // Running, player might be playing on table number (usize)
-    Finished                          // Finished
-}
-
-
-#[derive(Debug)]
-pub struct TournamentInfo {
-    pub tournament_id: Uuid,
-    pub table_count: usize,
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TournamentSummary {
+    pub tournament_id: String,
+    pub seat_count: u32,
+    pub table_count: u16,
     pub table_seat_count: u8,
-    pub player_count: usize,
-    pub stage: TournamentStage,
+    pub player_count: u32,
+    pub creation_date: String,
+    pub phase: String,
+    pub player_is_involved: bool,
 }
 
 
-#[derive(Debug)]
-pub struct FindTournamentsResponse {
-    pub infos: Vec<TournamentInfo>
-}
+pub type FindTournamentsResponse = Vec<TournamentSummary>;
 
 
 pub trait FindTournaments {
@@ -57,32 +54,26 @@ pub(in crate::application) fn find_tournaments<Repository: QueryTournaments>(
     auth_info: &AuthInfo,
     repository: &Repository,
 ) -> Result<FindTournamentsResponse, FindTournamentsError> {
-    let account_id = auth_info.ensure_authenticated()?;
+    _ = auth_info.ensure_authenticated()?;
 
     let tournaments = repository.query_tournaments()?;
 
-    let infos = tournaments.iter().map(|tournament| {
-        TournamentInfo {
-            tournament_id: tournament.id(),
-            table_count: tournament.table_count(),
-            table_seat_count: tournament.table_seat_count(),
-            player_count: tournament.player_count(),
-            stage: get_tournament_stage(tournament, account_id)
-        }
-    }).collect();
+    let summaries = tournaments.iter().map(|tournament| get_tournament_summary(tournament)).collect();
 
-    Ok(FindTournamentsResponse { infos })
+    Ok(summaries)
 }
 
 
-fn get_tournament_stage(tournament: &Tournament, account_id: Uuid) -> TournamentStage {
-    let table_number = tournament.players_table_number(account_id);
-    if tournament.is_waiting_for_players() {
-        TournamentStage::WaitingForPlayers(table_number)
-    } else if tournament.is_finished() {
-        TournamentStage::Finished
-    } else {
-        TournamentStage::Running(table_number)
+pub(in crate::application) fn get_tournament_summary(tournament: &Tournament) -> TournamentSummary {
+    TournamentSummary {
+        tournament_id: tournament.id().to_string(),
+        table_count: tournament.table_count() as u16,
+        table_seat_count: tournament.table_seat_count(),
+        player_count: tournament.player_count() as u32,
+        phase: "WaitingForPlayers".to_string(),
+        creation_date: "2024-08-01T14:38:32.499588".to_string(),
+        player_is_involved: false,
+        seat_count: 23,
     }
 }
 

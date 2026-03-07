@@ -1,5 +1,7 @@
 use crate::application::AuthError;
 use crate::application::AuthInfo;
+use crate::application::TournamentSummary;
+use crate::application::get_tournament_summary;
 
 use crate::domain::SaveTournament;
 use crate::domain::SaveTournamentError;
@@ -8,7 +10,6 @@ use crate::domain::TournamentSpecification;
 use crate::domain::TournamentSpecificationError;
 
 use thiserror::Error;
-use uuid::Uuid;
 
 
 #[derive(Debug, Error)]
@@ -29,10 +30,7 @@ pub struct CreateTournamentRequest {
 }
 
 
-#[derive(Debug)]
-pub struct CreateTournamentResponse {
-    pub tournament_id: Uuid,
-}
+pub type CreateTournamentResponse = TournamentSummary;
 
 
 pub trait CreateTournament {
@@ -41,11 +39,10 @@ pub trait CreateTournament {
 
 
 pub(in crate::application) fn create_tournament<Repository: SaveTournament>(request: CreateTournamentRequest, auth_info: &AuthInfo, repository: &mut Repository) -> Result<CreateTournamentResponse, CreateTournamentError> {
-    auth_info.ensure_authenticated()?;
+    _ = auth_info.ensure_authenticated()?;
     let tournament_spec = TournamentSpecification::new(request.table_count, request.table_seat_count)?;
     let tournament = Tournament::new(&tournament_spec);
-    let tournament_id = tournament.id();
-    let response = CreateTournamentResponse { tournament_id };
+    let response = get_tournament_summary(&tournament);
     repository.save_tournament(tournament)?;
     Ok(response)
 }
@@ -53,9 +50,11 @@ pub(in crate::application) fn create_tournament<Repository: SaveTournament>(requ
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     use crate::application::auth::AuthRole;
 
-    use super::*;
+    use uuid::Uuid;
 
     struct DummyRepository {
         save_error: Option<SaveTournamentError>,
@@ -126,6 +125,6 @@ mod tests {
         let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
         let result = create_tournament(request, &auth_info, &mut repository);
         let tournament = repository.tournament().unwrap();
-        assert!(result.is_ok_and(|response| response.tournament_id == tournament.id()));
+        assert!(result.is_ok_and(|response| response.tournament_id == tournament.id().to_string()));
     }
 }
