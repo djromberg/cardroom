@@ -1,5 +1,6 @@
 use crate::application::AuthError;
 use crate::application::AuthInfo;
+use crate::application::AuthRole;
 use crate::application::TournamentSummary;
 use crate::application::get_tournament_summary;
 
@@ -39,7 +40,7 @@ pub trait CreateTournament {
 
 
 pub(in crate::application) fn create_tournament<Repository: SaveTournament>(request: CreateTournamentRequest, auth_info: &AuthInfo, repository: &mut Repository) -> Result<CreateTournamentResponse, CreateTournamentError> {
-    _ = auth_info.ensure_authenticated()?;
+    _ = auth_info.expect_role(AuthRole::Organizer)?;
     let tournament_spec = TournamentSpecification::new(request.table_count, request.table_seat_count)?;
     let tournament = Tournament::new(&tournament_spec);
     let response = get_tournament_summary(&tournament);
@@ -90,20 +91,10 @@ mod tests {
 
 
     #[test]
-    fn create_tournament_without_being_authenticated() {
-        let mut repository = DummyRepository::new_with_successful_save();
-        let request = CreateTournamentRequest { table_count: 1, table_seat_count: 5 };
-        let auth_info = AuthInfo::Unauthenticated;
-        let result = create_tournament(request, &auth_info, &mut repository);
-        assert!(matches!(result, Err(CreateTournamentError::AuthError(AuthError::AuthenticationRequired))));
-        assert_eq!(repository.tournament(), None);
-    }
-
-    #[test]
     fn create_tournament_with_invalid_parameters() {
         let mut repository = DummyRepository::new_with_successful_save();
         let request = CreateTournamentRequest { table_count: 0, table_seat_count: 5 };
-        let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
+        let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
         let result = create_tournament(request, &auth_info, &mut repository);
         assert!(matches!(result, Err(CreateTournamentError::TournamentSpecificationError(_))));
         assert_eq!(repository.tournament(), None);
@@ -113,16 +104,25 @@ mod tests {
     fn create_tournament_with_repository_error() {
         let mut repository = DummyRepository::new_with_error_on_save(SaveTournamentError::DatabaseWritingError);
         let request = CreateTournamentRequest { table_count: 50, table_seat_count: 5 };
-        let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
+        let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
         let result = create_tournament(request, &auth_info, &mut repository);
         assert!(matches!(result, Err(CreateTournamentError::SaveTournamentError(SaveTournamentError::DatabaseWritingError))));
+    }
+
+    #[test]
+    fn create_tournament_without_required_role() {
+        let mut repository = DummyRepository::new_with_successful_save();
+        let request = CreateTournamentRequest { table_count: 50, table_seat_count: 5 };
+        let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Participant]);
+        let result = create_tournament(request, &auth_info, &mut repository);
+        assert!(matches!(result, Err(CreateTournamentError::AuthError(AuthError::PermissionDenied { required: AuthRole::Organizer }))));
     }
 
     #[test]
     fn create_tournament_without_any_error() {
         let mut repository = DummyRepository::new_with_successful_save();
         let request = CreateTournamentRequest { table_count: 50, table_seat_count: 5 };
-        let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: AuthRole::Member };
+        let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
         let result = create_tournament(request, &auth_info, &mut repository);
         let tournament = repository.tournament().unwrap();
         assert!(result.is_ok_and(|response| response.tournament_id == tournament.id().to_string()));

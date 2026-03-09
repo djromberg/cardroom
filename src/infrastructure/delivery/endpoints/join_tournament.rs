@@ -1,6 +1,7 @@
 use super::build_response;
+use super::create_auth_info;
 
-use crate::application::AuthInfo;
+use crate::application::AuthRole;
 use crate::application::JoinTournamentRequest;
 use crate::application::JoinTournamentError;
 use crate::application::JoinTournament;
@@ -8,6 +9,7 @@ use crate::domain::LoadTournamentError;
 
 use axum::http::StatusCode;
 use axum::{extract, Json, response};
+use axum_keycloak_auth::decode::KeycloakToken;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -30,13 +32,11 @@ pub struct ResponseBody {
 pub async fn handle_request(
     extract::State(service): extract::State<Arc<Mutex<impl JoinTournament>>>,
     extract::Path(tournament_id): extract::Path<Uuid>,
+    extract::Extension(token): extract::Extension<KeycloakToken<AuthRole>>,
     extract::Json(request): extract::Json<RequestBody>,
 ) -> Result<Json<ResponseBody>, JoinTournamentError> {
+    let auth_info = create_auth_info(token)?;
     let request = JoinTournamentRequest { tournament_id, nickname: request.nickname };
-
-    // let auth_info = AuthInfo::Unauthenticated;
-    let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: crate::application::AuthRole::Member };
-
     let mut service = service.lock().await;
     let response = service.join_tournament(request, &auth_info)?;
     Ok(Json(ResponseBody { table_number: response.table_number }))

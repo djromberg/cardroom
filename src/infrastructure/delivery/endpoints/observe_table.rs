@@ -1,4 +1,6 @@
-use crate::application::AuthInfo;
+use super::create_auth_info;
+
+use crate::application::AuthRole;
 use crate::application::ObserveTableError;
 use crate::application::ObserveTable;
 use crate::application::ObserveTableRequest;
@@ -8,6 +10,7 @@ use axum::extract::WebSocketUpgrade;
 use axum::extract::ws::WebSocket;
 use axum::response::Response;
 use axum::{extract, response};
+use axum_keycloak_auth::decode::KeycloakToken;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -18,11 +21,10 @@ pub async fn handle_request(
     wsu: WebSocketUpgrade,
     extract::Path((tournament_id, table_number)): extract::Path<(Uuid, usize)>,
     extract::State(service): extract::State<Arc<Mutex<impl ObserveTable>>>,
+    extract::Extension(token): extract::Extension<KeycloakToken<AuthRole>>,
 ) -> Result<Response, ObserveTableError> {
     log::info!("WEBSOCKET REQUEST");
-
-    // TODO: check auth
-    let auth_info = AuthInfo::Authenticated { account_id: Uuid::new_v4(), role: crate::application::AuthRole::Member };
+    let auth_info = create_auth_info(token)?;
 
     let request = ObserveTableRequest {
         tournament_id,

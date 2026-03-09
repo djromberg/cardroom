@@ -1,6 +1,7 @@
 use crate::application::AuthError;
 use crate::application::AuthInfo;
 
+use crate::application::AuthRole;
 use crate::domain::QueryTournaments;
 use crate::domain::QueryTournamentsError;
 use crate::domain::Tournament;
@@ -54,7 +55,7 @@ pub(in crate::application) fn find_tournaments<Repository: QueryTournaments>(
     auth_info: &AuthInfo,
     repository: &Repository,
 ) -> Result<FindTournamentsResponse, FindTournamentsError> {
-    _ = auth_info.ensure_authenticated()?;
+    _ = auth_info.expect_role(AuthRole::Observer)?;
 
     let tournaments = repository.query_tournaments()?;
 

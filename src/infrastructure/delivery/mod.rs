@@ -1,3 +1,4 @@
+mod auth;
 mod endpoints;
 mod server;
 
