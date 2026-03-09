@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum AuthError {
-    #[error("Permission denied: {required:?} role required")]
+    #[error("Permission denied: {required} role required")]
     PermissionDenied { required: AuthRole },
     #[error("Invalid account id")]
     InvalidAccountId,
