@@ -134,6 +134,10 @@ impl Tournament {
         self.tables.iter().map(|table| table.player_count() as usize).sum()
     }
 
+    pub fn has_player(&self, account_id: Uuid) -> bool {
+        self.tables.iter().any(|table| table.has_player(account_id))
+    }
+
     pub fn is_waiting_for_players(&self) -> bool {
         self.stage == TournamentStage::WaitingForPlayers
     }
@@ -243,10 +247,6 @@ impl Tournament {
 
     fn find_table_with_free_seats(&self) -> usize {
         self.tables.iter().enumerate().find(|(_, table)| table.has_free_seat()).map(|(index, _)| index).unwrap()
-    }
-
-    fn has_player(&self, account_id: Uuid) -> bool {
-        self.tables.iter().any(|table| table.has_player(account_id))
     }
 }
 

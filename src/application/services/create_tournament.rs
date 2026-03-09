@@ -40,10 +40,10 @@ pub trait CreateTournament {
 
 
 pub(in crate::application) fn create_tournament<Repository: SaveTournament>(request: CreateTournamentRequest, auth_info: &AuthInfo, repository: &mut Repository) -> Result<CreateTournamentResponse, CreateTournamentError> {
-    _ = auth_info.expect_role(AuthRole::Organizer)?;
+    let account_id = auth_info.expect_role(AuthRole::Organizer)?;
     let tournament_spec = TournamentSpecification::new(request.table_count, request.table_seat_count)?;
     let tournament = Tournament::new(&tournament_spec);
-    let response = get_tournament_summary(&tournament);
+    let response = get_tournament_summary(&tournament, account_id);
     repository.save_tournament(tournament)?;
     Ok(response)
 }

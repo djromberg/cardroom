@@ -9,6 +9,7 @@ use crate::domain::Tournament;
 use serde::Deserialize;
 use serde::Serialize;
 use thiserror::Error;
+use uuid::Uuid;
 
 
 #[derive(Debug, Error)]
@@ -55,17 +56,17 @@ pub(in crate::application) fn find_tournaments<Repository: QueryTournaments>(
     auth_info: &AuthInfo,
     repository: &Repository,
 ) -> Result<FindTournamentsResponse, FindTournamentsError> {
-    _ = auth_info.expect_role(AuthRole::Observer)?;
+    let account_id = auth_info.expect_role(AuthRole::Observer)?;
 
     let tournaments = repository.query_tournaments()?;
 
-    let summaries = tournaments.iter().map(|tournament| get_tournament_summary(tournament)).collect();
+    let summaries = tournaments.iter().map(|tournament| get_tournament_summary(tournament, account_id)).collect();
 
     Ok(summaries)
 }
 
 
-pub(in crate::application) fn get_tournament_summary(tournament: &Tournament) -> TournamentSummary {
+pub(in crate::application) fn get_tournament_summary(tournament: &Tournament, account_id: Uuid) -> TournamentSummary {
     TournamentSummary {
         tournament_id: tournament.id().to_string(),
         table_count: tournament.table_count() as u16,
@@ -73,7 +74,7 @@ pub(in crate::application) fn get_tournament_summary(tournament: &Tournament) ->
         player_count: tournament.player_count() as u32,
         phase: "WaitingForPlayers".to_string(),
         creation_date: "2024-08-01T14:38:32.499588".to_string(),
-        player_is_involved: false,
+        player_is_involved: tournament.has_player(account_id),
         seat_count: 23,
     }
 }
