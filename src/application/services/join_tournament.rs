@@ -12,6 +12,8 @@ use crate::domain::SaveTournamentError;
 use crate::domain::TournamentError;
 use crate::domain::save_tournament_and_publish_messages;
 
+use serde::Deserialize;
+use serde::Serialize;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -31,14 +33,16 @@ pub enum JoinTournamentError {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JoinTournamentRequest {
     pub tournament_id: Uuid,
     pub nickname: String,
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JoinTournamentResponse {
     pub table_number: usize,
 }
