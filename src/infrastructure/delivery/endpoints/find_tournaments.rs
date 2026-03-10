@@ -8,21 +8,9 @@ use crate::application::FindTournaments;
 
 use axum::{extract, Json, response};
 use axum_keycloak_auth::decode::KeycloakToken;
-use serde::Deserialize;
 use tokio::sync::Mutex;
 
 use std::sync::Arc;
-
-
-// #[derive(Debug, Deserialize)]
-// #[serde(rename_all = "camelCase")]
-// pub struct QueryParameters {
-//     min_table_count: Option<u16>,
-//     max_table_count: Option<u16>
-// }
-
-
-// pub type ResponseBody = Vec<TournamentSummary>;
 
 
 pub async fn handle_request(
@@ -31,10 +19,8 @@ pub async fn handle_request(
     extract::Query(request): extract::Query<FindTournamentsRequest>
 ) -> Result<Json<FindTournamentsResponse>, FindTournamentsError> {
     let auth_info = create_auth_info(token)?;
-    // let request = FindTournamentsRequest { };
     let service = service.lock().await;
     let response = service.find_tournaments(request, &auth_info)?;
-    // let summaries = response.infos.iter().map(create_summary_from_info).collect();
     Ok(Json(response))
 }
 
