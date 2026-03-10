@@ -43,10 +43,9 @@ impl TournamentSpecification {
 }
 
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TournamentStage {
     WaitingForPlayers,
-    ReadyToStart,
     Running,
     Finished,
 }
@@ -122,6 +121,10 @@ impl Tournament {
         }
     }
 
+    pub fn stage(&self) -> TournamentStage {
+        self.stage
+    }
+
     pub fn table_count(&self) -> usize {
         self.tables.len()
     }
@@ -150,10 +153,6 @@ impl Tournament {
         self.tables.iter().position(|table| table.has_player(account_id))
     }
 
-    pub fn is_ready_to_start(&self) -> bool {
-        self.stage == TournamentStage::ReadyToStart
-    }
-
     pub fn table_state(&self, table_number: usize) -> Result<TableState, TournamentError> {
         let table = self.tables.get(table_number).ok_or_else(|| TournamentError::NotSuchTable)?;
         Ok(table.state())
@@ -167,7 +166,7 @@ impl Tournament {
             } else {
                 let table_number = self.seat_player(account_id, nickname.clone());
                 if self.all_seats_are_taken() {
-                    self.stage = TournamentStage::ReadyToStart;
+                    self.start();
                 }
                 Ok(table_number)
             }
@@ -176,8 +175,8 @@ impl Tournament {
         }
     }
 
-    pub fn start(&mut self) {
-        assert!(self.is_ready_to_start());
+    fn start(&mut self) {
+        assert!(self.stage == TournamentStage::WaitingForPlayers && self.all_seats_are_taken());
         for (table_number, table) in self.tables.iter_mut().enumerate() {
             table.start_game();
 
