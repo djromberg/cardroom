@@ -10,6 +10,7 @@ use crate::domain::Tournament;
 use crate::domain::TournamentSpecification;
 use crate::domain::TournamentSpecificationError;
 
+use serde::Deserialize;
 use thiserror::Error;
 
 
@@ -24,7 +25,8 @@ pub enum CreateTournamentError {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTournamentRequest {
     pub table_count: u8,
     pub table_seat_count: u8,
