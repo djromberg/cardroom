@@ -6,7 +6,6 @@ use crate::application::JoinTournamentRequest;
 use crate::application::JoinTournamentError;
 use crate::application::JoinTournament;
 use crate::application::JoinTournamentResponse;
-use crate::domain::LoadTournamentError;
 
 use axum::http::StatusCode;
 use axum::{extract, Json, response};
@@ -34,16 +33,11 @@ pub async fn handle_request(
 impl response::IntoResponse for JoinTournamentError {
     fn into_response(self) -> response::Response {
         match self {
-            JoinTournamentError::LoadTournamentError(error) => {
-                match error {
-                    LoadTournamentError::TournamentNotFound => build_response(StatusCode::NOT_FOUND, error.to_string()),
-                    _ => build_response(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
-                }
-            },
-            JoinTournamentError::SaveTournamentError(error) => build_response(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
             JoinTournamentError::AuthError(error) => error.into_response(),
             JoinTournamentError::NicknameError(error) => build_response(StatusCode::BAD_REQUEST, error.to_string()),
-            JoinTournamentError::TournamentError(error) => build_response(StatusCode::BAD_REQUEST, error.to_string()),
+            JoinTournamentError::LoadTournamentError(error) => error.into_response(),
+            JoinTournamentError::TournamentError(error) => error.into_response(),
+            JoinTournamentError::SaveTournamentError(error) => error.into_response(),
         }
     }
 }

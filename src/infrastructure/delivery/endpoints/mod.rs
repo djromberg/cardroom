@@ -8,6 +8,7 @@ use crate::application::AuthInfo;
 use crate::application::AuthRole;
 use crate::domain::LoadTournamentError;
 use crate::domain::QueryTournamentsError;
+use crate::domain::SaveTournamentError;
 use crate::domain::TournamentError;
 
 use axum::response::IntoResponse;
@@ -49,6 +50,16 @@ impl IntoResponse for LoadTournamentError {
     fn into_response(self) -> Response {
         match self {
             LoadTournamentError::TournamentNotFound => build_response(StatusCode::NOT_FOUND, self.to_string()),
+            _ => build_response(StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+        }
+    }
+}
+
+
+impl IntoResponse for SaveTournamentError {
+    fn into_response(self) -> Response {
+        match self {
+            SaveTournamentError::TournamentOutdated => build_response(StatusCode::CONFLICT, self.to_string()),
             _ => build_response(StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
         }
     }

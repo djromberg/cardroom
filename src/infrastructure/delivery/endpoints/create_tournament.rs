@@ -31,7 +31,7 @@ impl response::IntoResponse for CreateTournamentError {
     fn into_response(self) -> response::Response {
         match self {
             CreateTournamentError::TournamentSpecificationError(error) => build_response(StatusCode::BAD_REQUEST, error.to_string()),
-            CreateTournamentError::SaveTournamentError(error) => build_response(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+            CreateTournamentError::SaveTournamentError(error) => error.into_response(),
             CreateTournamentError::AuthError(error) => error.into_response(),
         }
     }
