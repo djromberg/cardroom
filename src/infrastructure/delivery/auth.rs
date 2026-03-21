@@ -10,7 +10,7 @@ use axum_keycloak_auth::layer::KeycloakAuthLayer;
 pub fn create_auth_layer(required_roles: Vec<AuthRole>) -> KeycloakAuthLayer<AuthRole> {
     let instance = KeycloakAuthInstance::new(
         KeycloakConfig::builder()
-            .server(Url::parse("http://localhost:8080/").unwrap())
+            .server(Url::parse("https://keycloak.riensberg.lan/").unwrap())
             .realm(String::from("cardroom"))
             .build(),
         );
