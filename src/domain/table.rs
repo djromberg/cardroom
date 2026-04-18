@@ -1,147 +1,149 @@
-use super::nickname::Nickname;
-use super::player::Player;
+use std::collections::HashMap;
 
-use thiserror::Error;
+use crate::domain::DomainError;
+use crate::domain::Player;
+use crate::domain::PlayerId;
+use crate::domain::PlayerInfo;
+
 use uuid::Uuid;
 
 
-#[derive(Debug, Error)]
-pub enum TableSpecificationError {
-    #[error("There must be at least two seats, but found {found}")]
-    NotEnoughSeats { found: u8 },
-    #[error("There must not be more than 10 seats, but found {found}")]
-    TooManySeats { found: u8 }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TableSpecification {
     seat_count: u8,
 }
 
 impl TableSpecification {
-    pub fn new(seat_count: u8) -> Result<Self, TableSpecificationError> {
-        if seat_count < 2 {
-            Err(TableSpecificationError::NotEnoughSeats { found: seat_count })
-        } else if seat_count > 10 {
-            Err(TableSpecificationError::TooManySeats { found: seat_count })
+    pub fn new(seat_count: u8) -> Result<Self, DomainError> {
+        if seat_count < 2 || seat_count > 10 {
+            Err(DomainError::InvalidTableSpecification)
         } else {
             Ok(Self { seat_count })
         }
     }
-}
-
-
-#[derive(Debug, Error)]
-pub enum TableError {
-    #[error("Not player's turn")]
-    NotPlayersTurn,
-}
-
-
-#[derive(Debug)]
-pub struct TableState {
-}
-
-
-#[derive(Debug, Clone)]
-pub struct Table {
-    seats: Vec<Option<Player>>,
-    messages: Vec<TableMessage>,
-}
-
-impl Table {
-    pub fn new(spec: &TableSpecification) -> Self {
-        let mut seats = vec![];
-        for _ in 0..spec.seat_count {
-            seats.push(None);
-        }
-        Self { seats, messages: vec![] }
-    }
-
-    pub fn spec(&self) -> TableSpecification {
-        TableSpecification { seat_count: self.seats.len() as u8 }
-    }
-
-    pub fn state(&self) -> TableState {
-        TableState {}
-    }
-
-    pub fn has_free_seat(&self) -> bool {
-        self.seats.iter().any(|seat| seat.is_none())
-    }
 
     pub fn seat_count(&self) -> u8 {
-        self.seats.len() as u8
-    }
-
-    pub fn player_count(&self) -> u8 {
-        self.seats.iter().flatten().count() as u8
-    }
-
-    pub fn has_player(&self, account_id: Uuid) -> bool {
-        self.seats.iter().flatten().any(|player| player.account_id() == account_id)
-    }
-
-    pub fn sit_down(&mut self, account_id: Uuid, nickname: Nickname, stack: u32) {
-        let position = self.seats.iter_mut().position(|seat| seat.is_none()).unwrap();
-        let player = Player::new(account_id, nickname.clone(), stack);
-        _ = self.seats[position].insert(player);
-        self.messages.push(
-            TableMessage::PlayerSeated {
-                nickname,
-                stack,
-                position,
-            }
-        );
-    }
-
-    pub fn stand_up(&mut self, account_id: Uuid) {
-        let position = self.player_position(account_id).unwrap();
-        self.seats[position].take();
-        self.messages.push(
-            TableMessage::PlayerLeft {
-                position,
-            }
-        );
-    }
-
-    pub fn can_start_game(&self) -> bool {
-        // TODO: add check that no game is currently running
-        self.player_count() >= 2
-    }
-
-    pub fn start_game(&mut self) {
-        assert!(self.can_start_game());
-        // TODO: really implement game logic
-        self.messages.push(
-            TableMessage::GameStarted { button: 0 }
-        )
-    }
-
-    pub fn collect_messages(&mut self) -> Vec<TableMessage> {
-        std::mem::take(&mut self.messages)
-    }
-
-    fn player_position(&self, account_id: Uuid) -> Option<usize> {
-        self.seats.iter().position(|seat| {
-            seat.as_ref().is_some_and(|player| player.account_id() == account_id)
-        })
+        self.seat_count
     }
 }
 
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TableMessage {
-    PlayerSeated {
-        nickname: Nickname,
-        stack: u32,
-        position: usize,
+pub struct TableEvent {
+    pub table_id: TableId,
+    pub event_type: TableEventType,
+}
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TableEventType {
+    TableOpened {
+        seat_count: u8,
     },
-    PlayerLeft {
-        position: usize,
+    PlayerSeated {
+        position: u8,
+        player_info: PlayerInfo,
     },
     GameStarted {
-        button: u8,
-        // TODO: further information, blinds, etc.
+        button_position: u8,
+        involved_players: Vec<u8>,
+        small_blind: ChipsPaymentEvent,
+        big_blind: ChipsPaymentEvent,
+    },
+    PlayerActionRequested {
+        position: u8,
+        /* min bet, min raise, etc. */
+    },
+    PlayerLeft {
+        position: u8,
+        player_info: PlayerInfo,
     },
 }
+
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ChipsPaymentEvent {
+    position: u8,
+    amount: u32,
+    remaining_stack: u32,
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TableId(Uuid);
+
+impl TableId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+
+#[derive(Debug, Clone)]
+pub struct Table {
+    id: TableId,
+    seats: Vec<Option<Player>>,
+    button: u8,
+    game: Option<Game>,
+    events: Vec<TableEvent>,
+}
+
+impl Table {
+    pub fn new(id: TableId, spec: &TableSpecification) -> Self {
+        let mut seats = vec![];
+        for _ in 0..spec.seat_count {
+            seats.push(None);
+        }
+        let mut table = Self { id, seats, button: 0, game: None, events: vec![] };
+        table.record_event(TableEventType::TableOpened { seat_count: spec.seat_count });
+        table
+    }
+
+    pub fn seat_player(&mut self, player_info: PlayerInfo) {
+        let position = self.seats.iter_mut().position(|seat| seat.is_none()).unwrap();
+        let player = Player::new(&player_info);
+        _ = self.seats[position].insert(player);
+        self.record_event(TableEventType::PlayerSeated {
+            position: position as u8,
+            player_info
+        });
+    }
+
+    pub fn start_game(&mut self /* deck, blinds */) {
+        assert!(self.game.is_none());
+        let game = Game::new(/* deck */);
+        /* for player in seats: player.start game(game.deal_card()) */
+        /* for player in seats: game.deal_card */
+    }
+
+    pub fn act(&mut self, player_id: PlayerId, action: u8 /* use enum */) -> Result<(), DomainError> {
+        Ok(())
+    }
+
+    pub fn consume_events(&mut self) -> Vec<TableEvent> {
+        std::mem::take(&mut self.events)
+    }
+
+    fn record_event(&mut self, event_type: TableEventType) {
+        self.events.push(
+            TableEvent { table_id: self.id, event_type }
+        );
+    }
+}
+
+
+#[derive(Debug, Clone)]
+struct Game {
+    /* deck */
+    shares: HashMap<PlayerId, u32>,
+    board_cards: Vec<Card>,
+}
+
+impl Game {
+    pub fn new(/* deck */) -> Self {
+        Self { shares: HashMap::new(), board_cards: vec![] }
+    }
+}
+
+
+pub type Card = u8;

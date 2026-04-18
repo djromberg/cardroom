@@ -1,15 +1,6 @@
-use thiserror::Error;
+use super::DomainError;
 
 use std::fmt::Display;
-
-
-#[derive(Debug, Error)]
-pub enum NicknameError {
-    #[error("Nicknames must have at least one character")]
-    NicknameTooShort,
-    #[error("Nicknames must not have more than 12 characters")]
-    NicknameTooLong,
-}
 
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -18,12 +9,10 @@ pub struct Nickname {
 }
 
 impl Nickname {
-    pub fn new(value: impl Into<String>) -> Result<Self, NicknameError> {
+    pub fn new(value: impl Into<String>) -> Result<Self, DomainError> {
         let value = value.into();
-        if value.is_empty() {
-            Err(NicknameError::NicknameTooShort)
-        } else if value.len() > 12 {
-            Err(NicknameError::NicknameTooLong)
+        if value.is_empty() || value.len() > 12 {
+            Err(DomainError::InvalidNickname)
         } else {
             Ok(Self { value })
         }
@@ -44,9 +33,9 @@ mod tests {
     #[test]
     fn new_with_invalid_values() {
         let result = Nickname::new("");
-        assert!(matches!(result, Err(NicknameError::NicknameTooShort)));
+        assert!(matches!(result, Err(DomainError::InvalidNickname)));
         let result = Nickname::new("a".repeat(13));
-        assert!(matches!(result, Err(NicknameError::NicknameTooLong)));
+        assert!(matches!(result, Err(DomainError::InvalidNickname)));
     }
 
     #[test]
