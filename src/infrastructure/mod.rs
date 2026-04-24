@@ -1,5 +1,6 @@
 // mod delivery;
-// mod persistence;
+mod persistence;
 
 // pub use delivery::AxumServer;
 // pub use persistence::InMemoryTournamentRepository;
+pub use persistence::*;

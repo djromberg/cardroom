@@ -4,8 +4,19 @@ use crate::domain::DomainError;
 use crate::domain::Player;
 use crate::domain::PlayerId;
 use crate::domain::PlayerInfo;
+use crate::domain::TournamentId;
 
 use uuid::Uuid;
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TableId(Uuid);
+
+impl TableId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
 
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -31,6 +42,7 @@ impl TableSpecification {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TableEvent {
     pub table_id: TableId,
+    pub tournament_id: TournamentId,
     pub event_type: TableEventType,
 }
 
@@ -46,9 +58,7 @@ pub enum TableEventType {
     },
     GameStarted {
         button_position: u8,
-        involved_players: Vec<u8>,
-        small_blind: ChipsPaymentEvent,
-        big_blind: ChipsPaymentEvent,
+        /* involved players, etc. */
     },
     PlayerActionRequested {
         position: u8,
@@ -61,27 +71,10 @@ pub enum TableEventType {
 }
 
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ChipsPaymentEvent {
-    position: u8,
-    amount: u32,
-    remaining_stack: u32,
-}
-
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TableId(Uuid);
-
-impl TableId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
-
-
 #[derive(Debug, Clone)]
 pub struct Table {
     id: TableId,
+    tournament_id: TournamentId,
     seats: Vec<Option<Player>>,
     button: u8,
     game: Option<Game>,
@@ -89,14 +82,18 @@ pub struct Table {
 }
 
 impl Table {
-    pub fn new(id: TableId, spec: &TableSpecification) -> Self {
+    pub fn new(id: TableId, tournament_id: TournamentId, spec: &TableSpecification) -> Self {
         let mut seats = vec![];
         for _ in 0..spec.seat_count {
             seats.push(None);
         }
-        let mut table = Self { id, seats, button: 0, game: None, events: vec![] };
+        let mut table = Self { id, tournament_id, seats, button: 0, game: None, events: vec![] };
         table.record_event(TableEventType::TableOpened { seat_count: spec.seat_count });
         table
+    }
+
+    pub fn id(&self) -> TableId {
+        self.id
     }
 
     pub fn seat_player(&mut self, player_info: PlayerInfo) {
@@ -126,7 +123,7 @@ impl Table {
 
     fn record_event(&mut self, event_type: TableEventType) {
         self.events.push(
-            TableEvent { table_id: self.id, event_type }
+            TableEvent { table_id: self.id, tournament_id: self.tournament_id, event_type }
         );
     }
 }

@@ -37,6 +37,14 @@ impl TournamentSpecification {
 }
 
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum TournamentStage {
+    Registration,
+    Running,
+    Finished,
+}
+
+
 #[derive(Debug, Clone)]
 pub struct TournamentEvent {
     pub tournament_id: TournamentId,
@@ -54,9 +62,7 @@ pub enum TournamentEventType {
         table_id: TableId,
         player_info: PlayerInfo,
     },
-    TournamentStarted {
-        table_ids: Vec<TableId>,
-    },
+    TournamentStarted,
     PlayerKnockedOut {
         player_id: PlayerId,
         rank: u16,
@@ -140,9 +146,7 @@ impl Tournament {
 
     fn start(&mut self) {
         self.stage = TournamentStage::Running;
-        self.record_event(TournamentEventType::TournamentStarted {
-            table_ids: self.table_ids()
-        });
+        self.record_event(TournamentEventType::TournamentStarted);
     }
 
     fn seat_player(&mut self, player_info: PlayerInfo) {
@@ -167,14 +171,6 @@ impl PartialEq for Tournament {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
-}
-
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum TournamentStage {
-    Registration,
-    Running,
-    Finished,
 }
 
 

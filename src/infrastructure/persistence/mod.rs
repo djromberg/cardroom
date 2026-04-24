@@ -1,3 +1,3 @@
 mod repository;
 
-pub use repository::InMemoryTournamentRepository;
+pub use repository::*;

@@ -1,7 +1,15 @@
-use super::traits::RepositoryError;
 use crate::domain::DomainError;
 
 use thiserror::Error;
+
+
+#[derive(Debug, Error)]
+pub enum RepositoryError {
+    #[error("Resource not found")]
+    ResourceNotFound,
+    #[error("Internal error")]
+    InternalError,
+}
 
 
 #[derive(Debug, Error)]
