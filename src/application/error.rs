@@ -1,3 +1,4 @@
+use crate::application::AuthError;
 use crate::domain::DomainError;
 
 use thiserror::Error;
@@ -14,6 +15,8 @@ pub enum RepositoryError {
 
 #[derive(Debug, Error)]
 pub enum ApplicationError {
+    #[error(transparent)]
+    AuthError(#[from] AuthError),
     #[error(transparent)]
     DomainError(#[from] DomainError),
     #[error(transparent)]
