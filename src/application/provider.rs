@@ -35,10 +35,6 @@ impl<ToR: TournamentRepository, TaR: TableRepository> ServiceProvider<ToR, TaR> 
         let tables = ApplicationState::new(table_repository);
         Self { tournaments, tables }
     }
-
-    // pub fn create_tournament_service(&self) -> CreateTournamentService<ToR> {
-    //     CreateTournamentService::new(self.tournaments.repository(), self.tournaments.event_bus())
-    // }
 }
 
 

@@ -3,11 +3,15 @@ use axum::Router;
 use axum::routing;
 use log::info;
 use tokio::net::TcpListener;
+use uuid::Uuid;
 
 use std::io::Error;
 
+use crate::application::AuthInfo;
+use crate::application::AuthRole;
 use crate::application::CreateTournament;
 use crate::application::CreateTournamentRequest;
+use crate::application::CreateTournamentResponse;
 use crate::application::ProvideServices;
 
 
@@ -45,5 +49,8 @@ impl<Provider: ProvideServices> AxumServer<Provider> {
 async fn create_tournament<Service: CreateTournament>(
     extract::State(service): extract::State<Service>,
     extract::Json(request): extract::Json<CreateTournamentRequest>,
-) {
+) -> extract::Json<CreateTournamentResponse> {
+    let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
+    let response = service.create_tournament(request, &auth_info).unwrap();
+    extract::Json(response)
 }
