@@ -14,19 +14,14 @@ pub trait TableRepositoryTransaction {
 }
 
 
-pub trait TableRepository {
+pub trait TableRepository: Clone + Sync + Send + 'static {
     fn with_tx<F>(&self, f: F) -> Result<Vec<TableEvent>, ApplicationError>
     where
         F: FnOnce(&mut dyn TableRepositoryTransaction) -> Result<(), ApplicationError>;
 }
 
 
-pub trait TournamentRepository {
+pub trait TournamentRepository: Clone + Sync + Send + 'static {
     fn load_tournament(&self, id: TournamentId) -> Result<Tournament, RepositoryError>;
     fn save_tournament(&self, tournament: Tournament) -> Result<Vec<TournamentEvent>, RepositoryError>;
-}
-
-
-pub trait CreateTournament {
-    fn create_tournament(&self, table_count: u8, table_seat_count: u8) -> Result<(), ApplicationError>;
 }

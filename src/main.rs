@@ -2,9 +2,13 @@ mod application;
 mod domain;
 mod infrastructure;
 
-use std::io::Error;
+use crate::application::ServiceProvider;
 
-use crate::{application::Application, infrastructure::{AxumServer, InMemoryTableRepository, InMemoryTournamentRepository}};
+use crate::infrastructure::InMemoryTableRepository;
+use crate::infrastructure::InMemoryTournamentRepository;
+use crate::infrastructure::AxumServer;
+
+use std::io::Error;
 
 
 #[tokio::main]
@@ -12,12 +16,8 @@ async fn main() -> Result<(), Error> {
     env_logger::init();
     let table_repository = InMemoryTableRepository::new();
     let tournament_repository = InMemoryTournamentRepository::new();
-    let application = Application::new(tournament_repository, table_repository);
-
-    // let repository = InMemoryTournamentRepository::new();
-    // let broadcast = TableMessageBroadcast::new();
-    // let provider = ServiceProvider::new(repository, broadcast);
-    let server = AxumServer::new(3020);
-    server.serve(application).await?;
+    let service_provider = ServiceProvider::new(tournament_repository, table_repository);
+    let server = AxumServer::new(service_provider, 3020);
+    server.serve().await?;
     Ok(())
 }

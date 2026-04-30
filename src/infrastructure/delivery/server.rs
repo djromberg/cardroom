@@ -1,31 +1,29 @@
-// use super::auth::create_auth_layer;
-
 use axum::extract;
-use axum::Json;
 use axum::Router;
 use axum::routing;
 use log::info;
-use serde::Deserialize;
 use tokio::net::TcpListener;
 
 use std::io::Error;
-use std::sync::Arc;
 
-use crate::application::ApplicationError;
-use crate::application::ServiceProvider;
+use crate::application::CreateTournament;
+use crate::application::CreateTournamentRequest;
+use crate::application::ProvideServices;
 
 
 #[derive(Debug)]
-pub struct AxumServer {
+pub struct AxumServer<Provider> {
+    provider: Provider,
     port: u16,
 }
 
-impl AxumServer {
-    pub fn new( port: u16) -> Self {
-        Self { port }
+
+impl<Provider: ProvideServices> AxumServer<Provider> {
+    pub fn new(provider: Provider, port: u16) -> Self {
+        Self { provider, port }
     }
 
-    pub async fn serve<Provider: ServiceProvider + Send + Sync + 'static>(&self, provider: Provider) -> Result<(), Error> {
+    pub async fn serve(&self) -> Result<(), Error> {
         let address = "0.0.0.0:".to_owned() + &self.port.to_string();
         let listener = TcpListener::bind(address).await?;
 
@@ -34,10 +32,9 @@ impl AxumServer {
         let router = Router::new()
             .route(
                 "/tournaments",
-                routing::post(create_tournament)
+                routing::post(create_tournament::<Provider::CreateTournamentServiceType>)
             )
-            .with_state(Arc::new(provider)
-        );
+            .with_state(self.provider.create_tournament_service());
         info!("serving cardroom application ...");
 
         axum::serve(listener, router).await
@@ -45,19 +42,8 @@ impl AxumServer {
 }
 
 
-async fn create_tournament(
-    extract::State(app): extract::State<Arc<impl ServiceProvider>>,
+async fn create_tournament<Service: CreateTournament>(
+    extract::State(service): extract::State<Service>,
     extract::Json(request): extract::Json<CreateTournamentRequest>,
 ) {
-    app.print_my_name();
-    app.create_tournament(request.table_count, request.table_seat_count);
-    // app.create_tournament(request.table_count, request.table_seat_count)
-    // (StatusCode::OK, ())
-}
-
-
-#[derive(Deserialize)]
-struct CreateTournamentRequest {
-    table_count: u8,
-    table_seat_count: u8,
 }

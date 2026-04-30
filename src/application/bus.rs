@@ -1,7 +1,5 @@
-use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 
-use crate::domain::TournamentEvent;
 
 #[derive(Debug, Clone)]
 pub struct EventBus<Event> {
@@ -19,6 +17,3 @@ impl<E> EventBus<E> {
         }
     }
 }
-
-pub type TournamentEventBus = EventBus<TournamentEvent>;
-pub type TournamentEventReceiver = Receiver<TournamentEvent>;

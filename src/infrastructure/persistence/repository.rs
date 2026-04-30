@@ -11,6 +11,7 @@ use crate::domain::TournamentEvent;
 use crate::domain::TournamentId;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::Mutex;
 
 
@@ -69,14 +70,14 @@ impl TableRepositoryTransaction for InMemoryTableTransaction<'_> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InMemoryTableRepository {
-    database: Mutex<InMemoryTableDatabase>,
+    database: Arc<Mutex<InMemoryTableDatabase>>,
 }
 
 impl InMemoryTableRepository {
     pub fn new() -> Self {
-        Self { database: Mutex::new(InMemoryTableDatabase::new()) }
+        Self { database: Arc::new(Mutex::new(InMemoryTableDatabase::new())) }
     }
 }
 
@@ -93,7 +94,7 @@ impl TableRepository for InMemoryTableRepository {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct InMemoryTournamentDatabase {
     tournaments: HashMap<TournamentId, Tournament>,
 }
@@ -117,14 +118,14 @@ impl InMemoryTournamentDatabase {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InMemoryTournamentRepository {
-    database: Mutex<InMemoryTournamentDatabase>,
+    database: Arc<Mutex<InMemoryTournamentDatabase>>,
 }
 
 impl InMemoryTournamentRepository {
     pub fn new() -> Self {
-        Self { database: Mutex::new(InMemoryTournamentDatabase::new()) }
+        Self { database: Arc::new(Mutex::new(InMemoryTournamentDatabase::new())) }
     }
 }
 
