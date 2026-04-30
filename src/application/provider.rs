@@ -6,6 +6,7 @@ use crate::application::OpenTablesService;
 use crate::application::ApplicationState;
 
 use crate::domain::TableEvent;
+use crate::domain::TableEventType;
 use crate::domain::TournamentEvent;
 use crate::domain::TournamentEventType;
 
@@ -53,8 +54,9 @@ impl<ToR: TournamentRepository, TaR: TableRepository> ProcessEvents for ServiceP
             let event = self.tournaments.receive_event();
             match event.event_type {
                 TournamentEventType::TournamentCreated { table_spec, table_ids } => {
+                    log::info!("Tournament created, opening tables ...");
                     let service = OpenTablesService::new(self.tables.repository(), self.tables.event_bus());
-                    service.open_tables(event.tournament_id, table_ids, table_spec); // TODO: handle errors
+                    service.open_tables(event.tournament_id, table_ids, table_spec).unwrap(); // TODO: handle errors
                 },
                 _ => {},
             }
@@ -66,6 +68,9 @@ impl<ToR: TournamentRepository, TaR: TableRepository> ProcessEvents for ServiceP
         loop {
             let event = self.tables.receive_event();
             match event.event_type {
+                TableEventType::TableOpened { seat_count } => {
+                    log::info!("Table opened for tournament {:?}", event.tournament_id);
+                }
                 _ => {}
             }
         }
