@@ -27,6 +27,7 @@ impl<Repository: TableRepository> OpenTablesService<Repository> {
             }
             Ok(())
         })?;
+        log::info!("Tables opened for tournament {:?}", tournament_id);
         self.event_bus.send(events);
         Ok(())
     }

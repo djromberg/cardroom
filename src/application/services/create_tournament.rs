@@ -52,6 +52,7 @@ impl<Repository: TournamentRepository> CreateTournament for CreateTournamentServ
         let tournament_id = TournamentId::new();
         let tournament = Tournament::new(tournament_id, &tournament_spec);
         let events = self.repository.save_tournament(tournament)?;
+        log::info!("Tournament {:?} created", tournament_id);
         self.event_bus.send(events);
         Ok(CreateTournamentResponse { tournament_id })
     }
