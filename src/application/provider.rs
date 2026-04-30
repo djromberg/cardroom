@@ -50,8 +50,7 @@ impl<ToR: TournamentRepository, TaR> ProvideServices for ServiceProvider<ToR, Ta
 impl<ToR: TournamentRepository, TaR: TableRepository> ProcessEvents for ServiceProvider<ToR, TaR> {
     fn process_tournament_events(&self) {
         // TODO: make this abortable
-        loop {
-            let event = self.tournaments.receive_event();
+        while let Some(event) = self.tournaments.receive_event() {
             match event.event_type {
                 TournamentEventType::TournamentCreated { table_spec, table_ids } => {
                     log::info!("Tournament created, opening tables ...");
@@ -64,15 +63,15 @@ impl<ToR: TournamentRepository, TaR: TableRepository> ProcessEvents for ServiceP
     }
 
     fn process_table_events(&self) {
-        // TODO: make this abortable
-        loop {
-            let event = self.tables.receive_event();
-            match event.event_type {
-                TableEventType::TableOpened { seat_count } => {
-                    log::info!("Table opened for tournament {:?}", event.tournament_id);
-                }
-                _ => {}
-            }
-        }
+        // // TODO: make this abortable
+        // loop {
+        //     let event = self.tables.receive_event();
+        //     match event.event_type {
+        //         TableEventType::TableOpened { seat_count } => {
+        //             log::info!("Table opened for tournament {:?}", event.tournament_id);
+        //         }
+        //         _ => {}
+        //     }
+        // }
     }
 }

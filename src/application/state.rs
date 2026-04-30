@@ -26,7 +26,11 @@ impl<Repository: Clone, EventType> ApplicationState<Repository, EventType> {
         EventBus::new(self.sender.clone())
     }
 
-    pub fn receive_event(&self) -> EventType {
-        self.receiver.recv().unwrap()
+    pub fn receive_event(&self) -> Option<EventType> {
+        if let Ok(event) = self.receiver.try_recv() {
+            Some(event)
+        } else {
+            None
+        }
     }
 }
