@@ -1,14 +1,13 @@
-use axum::Router;
-use axum::routing;
-use log::info;
-use tokio::net::TcpListener;
-
-use std::io::Error;
+use super::endpoints;
 
 use crate::application::ProvideTableServices;
 use crate::application::ProvideTournamentServices;
 
-use super::endpoints;
+use axum::Router;
+use axum::routing;
+use tokio::net::TcpListener;
+
+use std::io::Error;
 
 
 #[derive(Debug)]
@@ -28,7 +27,7 @@ impl<TournamentServices: ProvideTournamentServices, TableServices: ProvideTableS
         let address = "0.0.0.0:".to_owned() + &self.port.to_string();
         let listener = TcpListener::bind(address).await?;
 
-        info!("listening on {}", listener.local_addr()?);
+        log::info!("listening on {}", listener.local_addr()?);
 
         let router = Router::new()
             .route(
@@ -41,7 +40,7 @@ impl<TournamentServices: ProvideTournamentServices, TableServices: ProvideTableS
                 routing::post(endpoints::act_on_table::<TableServices::ActOnTableServiceType>)
             )
             .with_state(self.table_services.act_on_table_service());
-        info!("serving cardroom application ...");
+        log::info!("serving cardroom application ...");
 
         axum::serve(listener, router).await
     }

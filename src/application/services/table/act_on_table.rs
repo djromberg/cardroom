@@ -1,5 +1,3 @@
-use uuid::Uuid;
-
 use crate::application::ApplicationError;
 use crate::application::EventBus;
 use crate::application::TableRepository;
@@ -8,8 +6,11 @@ use crate::domain::PlayerId;
 use crate::domain::TableEvent;
 use crate::domain::TableId;
 
+use serde::Deserialize;
+use uuid::Uuid;
 
-#[derive(Debug)]
+
+#[derive(Debug, Deserialize)]
 pub enum TableAction {
     Check,
     Bet(u32),
@@ -40,6 +41,7 @@ impl<Repository: TableRepository> ActOnTable for ActOnTableService<Repository> {
         log::info!("Trying to act on table {:?} with action {:?}", table_id, action);
         let events = self.repository.with_tx(|tx| {
             let mut table = tx.load_table(TableId::from_uuid(table_id))?;
+            // TODO: evaluate action
             table.check(PlayerId::new_v4())?;
             tx.save_table(table)?;
             Ok(())
