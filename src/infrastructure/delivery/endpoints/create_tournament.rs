@@ -1,3 +1,4 @@
+use crate::application::ApplicationError;
 use crate::application::AuthInfo;
 use crate::application::AuthRole;
 use crate::application::CreateTournament;
@@ -26,8 +27,9 @@ pub struct CreateTournamentResponse {
 pub async fn create_tournament<Service: CreateTournament>(
     extract::State(service): extract::State<Service>,
     extract::Json(request): extract::Json<CreateTournamentRequest>,
-) -> extract::Json<CreateTournamentResponse> {
+) -> Result<extract::Json<CreateTournamentResponse>, ApplicationError> {
     let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
-    let tournament_id = service.create_tournament(request.table_count, request.table_seat_count, &auth_info).unwrap();
-    extract::Json(CreateTournamentResponse { tournament_id: tournament_id.uuid() })
+    let tournament_id = service.create_tournament(request.table_count, request.table_seat_count, &auth_info)?;
+    let response = CreateTournamentResponse { tournament_id: tournament_id.uuid() };
+    Ok(extract::Json(response))
 }
