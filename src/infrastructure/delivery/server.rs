@@ -12,7 +12,7 @@ use crate::application::AuthRole;
 use crate::application::CreateTournament;
 use crate::application::CreateTournamentRequest;
 use crate::application::CreateTournamentResponse;
-use crate::application::ProvideServices;
+use crate::application::ProvideTournamentServices;
 
 
 #[derive(Debug)]
@@ -22,7 +22,7 @@ pub struct AxumServer<Provider> {
 }
 
 
-impl<Provider: ProvideServices> AxumServer<Provider> {
+impl<Provider: ProvideTournamentServices> AxumServer<Provider> {
     pub fn new(provider: Provider, port: u16) -> Self {
         Self { provider, port }
     }

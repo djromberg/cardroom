@@ -1,19 +1,24 @@
-use std::sync::mpsc::Sender;
+use tokio::sync::broadcast::{Receiver, Sender};
 
 
 #[derive(Debug, Clone)]
-pub struct EventBus<Event> {
-    sender: Sender<Event>,
+pub struct EventBus<EventType> {
+    sender: Sender<EventType>,
 }
 
-impl<E> EventBus<E> {
-    pub fn new(sender: Sender<E>) -> Self {
-        Self { sender }
+impl<EventType> EventBus<EventType> {
+    pub fn new() -> Self {
+        Self { sender: Sender::new(u16::MAX as usize) }
     }
 
-    pub fn send(&self, events: Vec<E>) {
+    pub fn subscribe(&self) -> Receiver<EventType> {
+        self.sender.subscribe()
+    }
+
+    pub fn send(&self, events: Vec<EventType>) {
         for event in events {
             self.sender.send(event);
+            // TODO: handle send error
         }
     }
 }

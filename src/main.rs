@@ -2,7 +2,10 @@ mod application;
 mod domain;
 mod infrastructure;
 
-use crate::application::ServiceProvider;
+use crate::application::ProvideTournamentEvents;
+use crate::application::TableServiceProvider;
+use crate::application::TournamentServiceProvider;
+use crate::application::TournamentEventHandler;
 
 use crate::infrastructure::InMemoryTableRepository;
 use crate::infrastructure::InMemoryTournamentRepository;
@@ -14,10 +17,25 @@ use std::io::Error;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     env_logger::init();
-    let table_repository = InMemoryTableRepository::new();
-    let tournament_repository = InMemoryTournamentRepository::new();
-    let service_provider = ServiceProvider::new(tournament_repository, table_repository);
-    let server = AxumServer::new(service_provider, 3020);
+    let tournament_service_provider = TournamentServiceProvider::new(
+        InMemoryTournamentRepository::new()
+    );
+    let table_service_provider = TableServiceProvider::new(
+        InMemoryTableRepository::new()
+    );
+
+    let mut tournament_event_handler = TournamentEventHandler::new(
+        table_service_provider.clone(),
+        tournament_service_provider.subscribe_events(),
+    );
+
+    let server = AxumServer::new(tournament_service_provider, 3020);
+
+    tokio::spawn(async move {
+        tournament_event_handler.handle_tournament_events().await;
+    });
+
     server.serve().await?;
+
     Ok(())
 }

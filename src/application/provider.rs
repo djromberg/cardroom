@@ -1,77 +1,84 @@
+use tokio::sync::broadcast::Receiver;
+
 use crate::application::CreateTournament;
 use crate::application::CreateTournamentService;
+use crate::application::EventBus;
+use crate::application::OpenTables;
+use crate::application::OpenTablesService;
 use crate::application::TableRepository;
 use crate::application::TournamentRepository;
-use crate::application::OpenTablesService;
-use crate::application::ApplicationState;
+
 
 use crate::domain::TableEvent;
-use crate::domain::TableEventType;
 use crate::domain::TournamentEvent;
-use crate::domain::TournamentEventType;
 
 
-pub trait ProcessEvents {
-    fn process_tournament_events(&self);
-    fn process_table_events(&self);
-}
-
-
-pub trait ProvideServices {
+pub trait ProvideTournamentServices {
     type CreateTournamentServiceType: CreateTournament + Clone + Send + Sync + 'static;
 
     fn create_tournament_service(&self) -> Self::CreateTournamentServiceType;
 }
 
+pub trait ProvidePrivateTableServices {
+    type OpenTablesServiceType: OpenTables + Clone + Send + Sync + 'static;
 
-#[derive(Debug)]
-pub struct ServiceProvider<ToR, TaR> {
-    tournaments: ApplicationState<ToR, TournamentEvent>,
-    tables: ApplicationState<TaR, TableEvent>,
+    fn open_tables_service(&self) -> Self::OpenTablesServiceType;
 }
 
-impl<ToR: TournamentRepository, TaR: TableRepository> ServiceProvider<ToR, TaR> {
-    pub fn new(tournament_repository: ToR, table_repository: TaR) -> Self {
-        let tournaments = ApplicationState::new(tournament_repository);
-        let tables = ApplicationState::new(table_repository);
-        Self { tournaments, tables }
+pub trait ProvideTournamentEvents {
+    fn subscribe_events(&self) -> Receiver<TournamentEvent>;
+}
+
+
+#[derive(Debug, Clone)]
+pub struct TournamentServiceProvider<Repository> {
+    repository: Repository,
+    event_bus: EventBus<TournamentEvent>,
+}
+
+impl<Repository> TournamentServiceProvider<Repository> {
+    pub fn new(repository: Repository) -> Self {
+        Self { repository, event_bus: EventBus::new() }
     }
 }
 
 
-impl<ToR: TournamentRepository, TaR> ProvideServices for ServiceProvider<ToR, TaR> {
-    type CreateTournamentServiceType = CreateTournamentService<ToR>;
+impl<Repository: TournamentRepository> ProvideTournamentServices for TournamentServiceProvider<Repository> {
+    type CreateTournamentServiceType = CreateTournamentService<Repository>;
+
     fn create_tournament_service(&self) -> Self::CreateTournamentServiceType {
-        CreateTournamentService::new(self.tournaments.repository(), self.tournaments.event_bus())
+        CreateTournamentService::new(self.repository.clone(), self.event_bus.clone())
     }
 }
 
 
-impl<ToR: TournamentRepository, TaR: TableRepository> ProcessEvents for ServiceProvider<ToR, TaR> {
-    fn process_tournament_events(&self) {
-        // TODO: make this abortable
-        while let Some(event) = self.tournaments.receive_event() {
-            match event.event_type {
-                TournamentEventType::TournamentCreated { table_spec, table_ids } => {
-                    log::info!("Tournament created, opening tables ...");
-                    let service = OpenTablesService::new(self.tables.repository(), self.tables.event_bus());
-                    service.open_tables(event.tournament_id, table_ids, table_spec).unwrap(); // TODO: handle errors
-                },
-                _ => {},
-            }
-        }
+impl<Repository: TournamentRepository> ProvideTournamentEvents for TournamentServiceProvider<Repository> {
+    fn subscribe_events(&self) -> Receiver<TournamentEvent> {
+        self.event_bus.subscribe()
     }
+}
 
-    fn process_table_events(&self) {
-        // // TODO: make this abortable
-        // loop {
-        //     let event = self.tables.receive_event();
-        //     match event.event_type {
-        //         TableEventType::TableOpened { seat_count } => {
-        //             log::info!("Table opened for tournament {:?}", event.tournament_id);
-        //         }
-        //         _ => {}
-        //     }
-        // }
+
+
+
+
+#[derive(Debug, Clone)]
+pub struct TableServiceProvider<Repository> {
+    repository: Repository,
+    event_bus: EventBus<TableEvent>,
+}
+
+impl<Repository> TableServiceProvider<Repository> {
+    pub fn new(repository: Repository) -> Self {
+        Self { repository, event_bus: EventBus::new() }
+    }
+}
+
+
+impl<Repository: TableRepository> ProvidePrivateTableServices for TableServiceProvider<Repository> {
+    type OpenTablesServiceType = OpenTablesService<Repository>;
+
+    fn open_tables_service(&self) -> Self::OpenTablesServiceType {
+        OpenTablesService::new(self.repository.clone(), self.event_bus.clone())
     }
 }
