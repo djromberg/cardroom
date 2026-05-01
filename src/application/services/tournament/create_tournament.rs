@@ -9,26 +9,9 @@ use crate::domain::TournamentEvent;
 use crate::domain::TournamentId;
 use crate::domain::TournamentSpecification;
 
-use serde::{Deserialize, Serialize};
-
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateTournamentRequest {
-    pub table_count: u8,
-    pub table_seat_count: u8,
-}
-
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateTournamentResponse {
-    pub tournament_id: TournamentId,
-}
-
 
 pub trait CreateTournament {
-    fn create_tournament(&self, request: CreateTournamentRequest, auth_info: &AuthInfo) -> Result<CreateTournamentResponse, ApplicationError>;
+    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<TournamentId, ApplicationError>;
 }
 
 
@@ -45,15 +28,15 @@ impl<Repository: TournamentRepository> CreateTournamentService<Repository> {
 }
 
 impl<Repository: TournamentRepository> CreateTournament for CreateTournamentService<Repository> {
-    fn create_tournament(&self, request: CreateTournamentRequest, auth_info: &AuthInfo) -> Result<CreateTournamentResponse, ApplicationError> {
+    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<TournamentId, ApplicationError> {
         let account_id = auth_info.expect_role(AuthRole::Organizer)?;
-        let table_spec = TableSpecification::new(request.table_seat_count)?;
-        let tournament_spec = TournamentSpecification::new(request.table_count, table_spec)?;
+        let table_spec = TableSpecification::new(table_seat_count)?;
+        let tournament_spec = TournamentSpecification::new(table_count, table_spec)?;
         let tournament_id = TournamentId::new();
         let tournament = Tournament::new(tournament_id, &tournament_spec);
         let events = self.repository.save_tournament(tournament)?;
         log::info!("Tournament {:?} created", tournament_id);
         self.event_bus.send(events);
-        Ok(CreateTournamentResponse { tournament_id })
+        Ok(tournament_id)
     }
 }

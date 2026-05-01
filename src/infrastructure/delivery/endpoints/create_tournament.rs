@@ -1,38 +1,33 @@
-use super::build_response;
-use super::create_auth_info;
-
+use crate::application::AuthInfo;
 use crate::application::AuthRole;
-use crate::application::CreateTournamentRequest;
-use crate::application::CreateTournamentError;
 use crate::application::CreateTournament;
-use crate::application::TournamentSummary;
 
-use axum::http::StatusCode;
-use axum::{extract, Json, response};
-use axum_keycloak_auth::decode::KeycloakToken;
-use tokio::sync::Mutex;
-
-use std::sync::Arc;
+use axum::extract;
+use serde::Deserialize;
+use serde::Serialize;
+use uuid::Uuid;
 
 
-pub async fn handle_request(
-    extract::State(service): extract::State<Arc<Mutex<impl CreateTournament>>>,
-    extract::Extension(token): extract::Extension<KeycloakToken<AuthRole>>,
-    extract::Json(request): extract::Json<CreateTournamentRequest>,
-) -> Result<Json<TournamentSummary>, CreateTournamentError> {
-    let auth_info = create_auth_info(token)?;
-    let mut service = service.lock().await;
-    let response = service.create_tournament(request, &auth_info)?;
-    Ok(Json(response))
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTournamentRequest {
+    pub table_count: u8,
+    pub table_seat_count: u8,
 }
 
 
-impl response::IntoResponse for CreateTournamentError {
-    fn into_response(self) -> response::Response {
-        match self {
-            CreateTournamentError::TournamentSpecificationError(error) => build_response(StatusCode::BAD_REQUEST, error.to_string()),
-            CreateTournamentError::SaveTournamentError(error) => error.into_response(),
-            CreateTournamentError::AuthError(error) => error.into_response(),
-        }
-    }
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTournamentResponse {
+    pub tournament_id: Uuid,
+}
+
+
+pub async fn create_tournament<Service: CreateTournament>(
+    extract::State(service): extract::State<Service>,
+    extract::Json(request): extract::Json<CreateTournamentRequest>,
+) -> extract::Json<CreateTournamentResponse> {
+    let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
+    let tournament_id = service.create_tournament(request.table_count, request.table_seat_count, &auth_info).unwrap();
+    extract::Json(CreateTournamentResponse { tournament_id: tournament_id.uuid() })
 }

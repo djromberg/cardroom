@@ -10,16 +10,21 @@ use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
-// dummy to introduce signature
-pub type TableAction = u32;
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TableId(Uuid);
 
 impl TableId {
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+
     pub fn new() -> Self {
         Self(Uuid::new_v4())
+    }
+
+    pub fn uuid(&self) -> Uuid {
+        self.0
     }
 }
 
@@ -69,9 +74,8 @@ pub enum TableEventType {
         position: u8,
         /* min bet, min raise, etc. */
     },
-    PlayerActed {
+    PlayerChecked {
         position: u8,
-        action: TableAction,
     },
     PlayerLeft {
         position: u8,
@@ -122,9 +126,9 @@ impl Table {
         /* for player in seats: game.deal_card */
     }
 
-    pub fn act(&mut self, player_id: PlayerId, action: TableAction) -> Result<(), DomainError> {
+    pub fn check(&mut self, player_id: PlayerId) -> Result<(), DomainError> {
         // TODO: implement correctly, this is just for testing application/infrastructure
-        self.record_event(TableEventType::PlayerActed { position: 2, action });
+        self.record_event(TableEventType::PlayerChecked { position: 2 });
         Ok(())
     }
 

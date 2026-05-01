@@ -1,5 +1,5 @@
 // mod auth;
-// mod endpoints;
+mod endpoints;
 mod server;
 
 pub use server::AxumServer;

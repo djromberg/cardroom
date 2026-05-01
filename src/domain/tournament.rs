@@ -15,8 +15,16 @@ use uuid::Uuid;
 pub struct TournamentId(Uuid);
 
 impl TournamentId {
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+
     pub fn new() -> Self {
         Self(Uuid::new_v4())
+    }
+
+    pub fn uuid(&self) -> Uuid {
+        self.0
     }
 }
 
