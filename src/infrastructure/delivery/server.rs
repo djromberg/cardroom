@@ -7,24 +7,28 @@ use uuid::Uuid;
 
 use std::io::Error;
 
+use crate::application::ActOnTable;
 use crate::application::AuthInfo;
 use crate::application::AuthRole;
 use crate::application::CreateTournament;
 use crate::application::CreateTournamentRequest;
 use crate::application::CreateTournamentResponse;
+use crate::application::ProvideTableServices;
 use crate::application::ProvideTournamentServices;
+use crate::domain::TableId;
 
 
 #[derive(Debug)]
-pub struct AxumServer<Provider> {
-    provider: Provider,
+pub struct AxumServer<TournamentServices, TableServices> {
+    tournament_services: TournamentServices,
+    table_services: TableServices,
     port: u16,
 }
 
 
-impl<Provider: ProvideTournamentServices> AxumServer<Provider> {
-    pub fn new(provider: Provider, port: u16) -> Self {
-        Self { provider, port }
+impl<TournamentServices: ProvideTournamentServices, TableServices: ProvideTableServices> AxumServer<TournamentServices, TableServices> {
+    pub fn new(tournament_services: TournamentServices, table_services: TableServices, port: u16) -> Self {
+        Self { tournament_services, table_services, port }
     }
 
     pub async fn serve(&self) -> Result<(), Error> {
@@ -36,9 +40,14 @@ impl<Provider: ProvideTournamentServices> AxumServer<Provider> {
         let router = Router::new()
             .route(
                 "/tournaments",
-                routing::post(create_tournament::<Provider::CreateTournamentServiceType>)
+                routing::post(create_tournament::<TournamentServices::CreateTournamentServiceType>)
             )
-            .with_state(self.provider.create_tournament_service());
+            .with_state(self.tournament_services.create_tournament_service())
+            .route(
+                "/tables/{table_id}/action",
+                routing::post(act_on_table::<TableServices::ActOnTableServiceType>)
+            )
+            .with_state(self.table_services.act_on_table_service());
         info!("serving cardroom application ...");
 
         axum::serve(listener, router).await
@@ -53,4 +62,15 @@ async fn create_tournament<Service: CreateTournament>(
     let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
     let response = service.create_tournament(request, &auth_info).unwrap();
     extract::Json(response)
+}
+
+
+async fn act_on_table<Service: ActOnTable>(
+    extract::State(service): extract::State<Service>,
+    extract::Path(table_id): extract::Path<TableId>,
+) {
+    service.act_on_table(table_id, 42);
+    // let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
+    // let response = service.create_tournament(request, &auth_info).unwrap();
+    // extract::Json(response)
 }

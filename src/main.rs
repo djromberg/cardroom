@@ -29,7 +29,7 @@ async fn main() -> Result<(), Error> {
         tournament_service_provider.subscribe_events(),
     );
 
-    let server = AxumServer::new(tournament_service_provider, 3020);
+    let server = AxumServer::new(tournament_service_provider, table_service_provider, 3020);
 
     tokio::spawn(async move {
         tournament_event_handler.handle_tournament_events().await;

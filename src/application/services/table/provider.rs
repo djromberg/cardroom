@@ -1,9 +1,18 @@
+use crate::application::ActOnTable;
+use crate::application::ActOnTableService;
 use crate::application::EventBus;
 use crate::application::OpenTables;
 use crate::application::OpenTablesService;
 use crate::application::TableRepository;
 
 use crate::domain::TableEvent;
+
+
+pub trait ProvideTableServices {
+    type ActOnTableServiceType: ActOnTable + Clone + Send + Sync + 'static;
+
+    fn act_on_table_service(&self) -> Self::ActOnTableServiceType;
+}
 
 
 pub trait ProvidePrivateTableServices {
@@ -24,6 +33,16 @@ impl<Repository> TableServiceProvider<Repository> {
         Self { repository, event_bus: EventBus::new() }
     }
 }
+
+
+impl<Repository: TableRepository> ProvideTableServices for TableServiceProvider<Repository> {
+    type ActOnTableServiceType = ActOnTableService<Repository>;
+
+    fn act_on_table_service(&self) -> Self::ActOnTableServiceType {
+        ActOnTableService::new(self.repository.clone(), self.event_bus.clone())
+    }
+}
+
 
 
 impl<Repository: TableRepository> ProvidePrivateTableServices for TableServiceProvider<Repository> {

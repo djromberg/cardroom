@@ -6,10 +6,15 @@ use crate::domain::PlayerId;
 use crate::domain::PlayerInfo;
 use crate::domain::TournamentId;
 
+use serde::Deserialize;
+use serde::Serialize;
 use uuid::Uuid;
 
+// dummy to introduce signature
+pub type TableAction = u32;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TableId(Uuid);
 
 impl TableId {
@@ -64,6 +69,10 @@ pub enum TableEventType {
         position: u8,
         /* min bet, min raise, etc. */
     },
+    PlayerActed {
+        position: u8,
+        action: TableAction,
+    },
     PlayerLeft {
         position: u8,
         player_info: PlayerInfo,
@@ -113,7 +122,9 @@ impl Table {
         /* for player in seats: game.deal_card */
     }
 
-    pub fn act(&mut self, player_id: PlayerId, action: u8 /* use enum */) -> Result<(), DomainError> {
+    pub fn act(&mut self, player_id: PlayerId, action: TableAction) -> Result<(), DomainError> {
+        // TODO: implement correctly, this is just for testing application/infrastructure
+        self.record_event(TableEventType::PlayerActed { position: 2, action });
         Ok(())
     }
 
