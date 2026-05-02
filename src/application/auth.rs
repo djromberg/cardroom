@@ -45,12 +45,13 @@ impl std::fmt::Display for AuthRole {
 #[derive(Debug)]
 pub struct AuthInfo {
     account_id: Uuid,
+    given_name: String,
     roles: Vec<AuthRole>,
 }
 
 impl AuthInfo {
-    pub fn new(account_id: Uuid, roles: Vec<AuthRole>) -> Self {
-        Self { account_id, roles }
+    pub fn new(account_id: Uuid, given_name: String, roles: Vec<AuthRole>) -> Self {
+        Self { account_id, given_name, roles }
     }
 
     pub fn expect_role(&self, role: AuthRole) -> Result<Uuid, AuthError> {
@@ -63,6 +64,14 @@ impl AuthInfo {
 
     pub fn expect_participant(&self) -> Result<Uuid, AuthError> {
         self.expect_role(AuthRole::Participant)
+    }
+
+    pub fn expect_organizer(&self) -> Result<Uuid, AuthError> {
+        self.expect_role(AuthRole::Organizer)
+    }
+
+    pub fn given_name(&self) -> &String {
+        &self.given_name
     }
 }
 

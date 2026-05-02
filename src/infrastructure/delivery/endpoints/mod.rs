@@ -41,5 +41,6 @@ fn build_response(status_code: axum::http::StatusCode, message: String) -> Respo
 fn create_auth_info(token: KeycloakToken<AuthRole>) -> Result<AuthInfo, AuthError> {
     let account_id = Uuid::parse_str(&token.subject).map_err(|_| AuthError::InvalidAccountId)?;
     let roles = token.roles.iter().map(|kcr| kcr.role().clone()).collect();
-    Ok(AuthInfo::new(account_id, roles))
+    let given_name = token.extra.profile.given_name.unwrap_or("Anonymous".to_string());
+    Ok(AuthInfo::new(account_id, given_name, roles))
 }
