@@ -3,6 +3,8 @@ use tokio::sync::broadcast::Receiver;
 use crate::application::CreateTournament;
 use crate::application::CreateTournamentService;
 use crate::application::EventBus;
+use crate::application::RegisterPlayer;
+use crate::application::RegisterPlayerService;
 use crate::application::TournamentRepository;
 
 use crate::domain::TournamentEvent;
@@ -10,8 +12,10 @@ use crate::domain::TournamentEvent;
 
 pub trait ProvideTournamentServices {
     type CreateTournamentServiceType: CreateTournament + Clone + Send + Sync + 'static;
+    type RegisterPlayerServiceType: RegisterPlayer + Clone + Send + Sync + 'static;
 
     fn create_tournament_service(&self) -> Self::CreateTournamentServiceType;
+    fn register_player_service(&self) -> Self::RegisterPlayerServiceType;
 }
 
 
@@ -35,9 +39,14 @@ impl<Repository> TournamentServiceProvider<Repository> {
 
 impl<Repository: TournamentRepository> ProvideTournamentServices for TournamentServiceProvider<Repository> {
     type CreateTournamentServiceType = CreateTournamentService<Repository>;
+    type RegisterPlayerServiceType = RegisterPlayerService<Repository>;
 
     fn create_tournament_service(&self) -> Self::CreateTournamentServiceType {
         CreateTournamentService::new(self.repository.clone(), self.event_bus.clone())
+    }
+
+    fn register_player_service(&self) -> Self::RegisterPlayerServiceType {
+        RegisterPlayerService::new(self.repository.clone(), self.event_bus.clone())
     }
 }
 

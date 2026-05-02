@@ -1,13 +1,16 @@
 mod act_on_table;
 mod create_tournament;
+mod register_player;
 
 use crate::application::{ApplicationError, AuthError, AuthInfo, AuthRole, RepositoryError};
 
 use axum::{http::StatusCode, response::{IntoResponse, Response}};
 
 pub use act_on_table::*;
-use axum_keycloak_auth::decode::KeycloakToken;
 pub use create_tournament::*;
+pub use register_player::*;
+
+use axum_keycloak_auth::decode::KeycloakToken;
 
 use uuid::Uuid;
 
