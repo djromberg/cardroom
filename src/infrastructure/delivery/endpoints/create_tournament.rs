@@ -1,9 +1,11 @@
+use super::create_auth_info;
+
 use crate::application::ApplicationError;
-use crate::application::AuthInfo;
 use crate::application::AuthRole;
 use crate::application::CreateTournament;
 
 use axum::extract;
+use axum_keycloak_auth::decode::KeycloakToken;
 use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
@@ -26,9 +28,10 @@ pub struct CreateTournamentResponse {
 
 pub async fn create_tournament<Service: CreateTournament>(
     extract::State(service): extract::State<Service>,
+    extract::Extension(token): extract::Extension<KeycloakToken<AuthRole>>,
     extract::Json(request): extract::Json<CreateTournamentRequest>,
 ) -> Result<extract::Json<CreateTournamentResponse>, ApplicationError> {
-    let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
+    let auth_info = create_auth_info(token)?;
     let tournament_id = service.create_tournament(request.table_count, request.table_seat_count, &auth_info)?;
     let response = CreateTournamentResponse { tournament_id };
     Ok(extract::Json(response))

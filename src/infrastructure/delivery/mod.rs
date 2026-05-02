@@ -1,4 +1,4 @@
-// mod auth;
+mod auth;
 mod endpoints;
 mod server;
 

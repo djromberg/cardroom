@@ -1,4 +1,5 @@
 use super::endpoints;
+use super::auth;
 
 use crate::application::ProvideTableServices;
 use crate::application::ProvideTournamentServices;
@@ -39,6 +40,7 @@ impl<TournamentServices: ProvideTournamentServices, TableServices: ProvideTableS
                 "/tables/{table_id}/action",
                 routing::post(endpoints::act_on_table::<TableServices::ActOnTableServiceType>)
             )
+            .layer(auth::create_auth_layer(vec![]))
             .with_state(self.table_services.act_on_table_service());
         log::info!("serving cardroom application ...");
 

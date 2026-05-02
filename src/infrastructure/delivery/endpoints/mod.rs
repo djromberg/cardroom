@@ -1,12 +1,15 @@
 mod act_on_table;
 mod create_tournament;
 
-use crate::application::{ApplicationError, AuthError, RepositoryError};
+use crate::application::{ApplicationError, AuthError, AuthInfo, AuthRole, RepositoryError};
 
 use axum::{http::StatusCode, response::{IntoResponse, Response}};
 
 pub use act_on_table::*;
+use axum_keycloak_auth::decode::KeycloakToken;
 pub use create_tournament::*;
+
+use uuid::Uuid;
 
 
 impl IntoResponse for ApplicationError {
@@ -32,4 +35,11 @@ impl IntoResponse for ApplicationError {
 
 fn build_response(status_code: axum::http::StatusCode, message: String) -> Response {
     Response::builder().status(status_code).body(message.into()).unwrap()
+}
+
+
+fn create_auth_info(token: KeycloakToken<AuthRole>) -> Result<AuthInfo, AuthError> {
+    let account_id = Uuid::parse_str(&token.subject).map_err(|_| AuthError::InvalidAccountId)?;
+    let roles = token.roles.iter().map(|kcr| kcr.role().clone()).collect();
+    Ok(AuthInfo::new(account_id, roles))
 }
