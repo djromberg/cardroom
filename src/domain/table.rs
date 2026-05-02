@@ -6,12 +6,10 @@ use crate::domain::PlayerId;
 use crate::domain::PlayerInfo;
 use crate::domain::TournamentId;
 
-use serde::Deserialize;
-use serde::Serialize;
 use uuid::Uuid;
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TableId(Uuid);
 
 impl TableId {

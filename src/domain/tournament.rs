@@ -7,11 +7,10 @@ use crate::domain::PlayerId;
 use crate::domain::TableId;
 use crate::domain::TableSpecification;
 
-use serde::Serialize;
 use uuid::Uuid;
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TournamentId(Uuid);
 
 impl TournamentId {
