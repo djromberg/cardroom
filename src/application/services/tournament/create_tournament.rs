@@ -3,15 +3,18 @@ use crate::application::AuthRole;
 use crate::application::ApplicationError;
 use crate::application::EventBus;
 use crate::application::TournamentRepository;
+
 use crate::domain::TableSpecification;
 use crate::domain::Tournament;
 use crate::domain::TournamentEvent;
 use crate::domain::TournamentId;
 use crate::domain::TournamentSpecification;
 
+use uuid::Uuid;
+
 
 pub trait CreateTournament {
-    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<TournamentId, ApplicationError>;
+    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError>;
 }
 
 
@@ -28,7 +31,7 @@ impl<Repository: TournamentRepository> CreateTournamentService<Repository> {
 }
 
 impl<Repository: TournamentRepository> CreateTournament for CreateTournamentService<Repository> {
-    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<TournamentId, ApplicationError> {
+    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError> {
         let account_id = auth_info.expect_role(AuthRole::Organizer)?;
         let table_spec = TableSpecification::new(table_seat_count)?;
         let tournament_spec = TournamentSpecification::new(table_count, table_spec)?;
@@ -37,6 +40,6 @@ impl<Repository: TournamentRepository> CreateTournament for CreateTournamentServ
         let events = self.repository.save_tournament(tournament)?;
         log::info!("Tournament {:?} created", tournament_id);
         self.event_bus.send(events);
-        Ok(tournament_id)
+        Ok(tournament_id.uuid())
     }
 }

@@ -30,6 +30,6 @@ pub async fn create_tournament<Service: CreateTournament>(
 ) -> Result<extract::Json<CreateTournamentResponse>, ApplicationError> {
     let auth_info = AuthInfo::new(Uuid::new_v4(), vec![AuthRole::Organizer]);
     let tournament_id = service.create_tournament(request.table_count, request.table_seat_count, &auth_info)?;
-    let response = CreateTournamentResponse { tournament_id: tournament_id.uuid() };
+    let response = CreateTournamentResponse { tournament_id };
     Ok(extract::Json(response))
 }

@@ -84,6 +84,14 @@ pub enum TableEventType {
 }
 
 
+#[derive(Debug, Clone, Copy)]
+pub enum TableAction {
+    Check,
+    Bet(u32),
+    Fold,
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Table {
     id: TableId,
@@ -126,7 +134,7 @@ impl Table {
         /* for player in seats: game.deal_card */
     }
 
-    pub fn check(&mut self, player_id: PlayerId) -> Result<(), DomainError> {
+    pub fn act(&mut self, player_id: PlayerId, action: TableAction) -> Result<(), DomainError> {
         // TODO: implement correctly, this is just for testing application/infrastructure
         self.record_event(TableEventType::PlayerChecked { position: 2 });
         Ok(())

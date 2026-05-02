@@ -60,6 +60,10 @@ impl AuthInfo {
             Err(AuthError::PermissionDenied { required: role })
         }
     }
+
+    pub fn expect_participant(&self) -> Result<Uuid, AuthError> {
+        self.expect_role(AuthRole::Participant)
+    }
 }
 
 
