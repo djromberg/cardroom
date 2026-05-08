@@ -54,15 +54,27 @@ impl InMemoryTableRepository {
 #[async_trait]
 impl TableRepository for InMemoryTableRepository {
     async fn load_table(&self, table_id: TableId) -> Result<Table, RepositoryError> {
-        Err(RepositoryError::InternalError)
+        let db = self.database.lock().await;
+        let x = db.load(table_id).unwrap();
+        Ok(x)
     }
 
-    async fn save_table(&self, table: Table) -> Result<Vec<TableEvent>, RepositoryError> {
-        Err(RepositoryError::InternalError)
+    async fn save_table(&self, mut table: Table) -> Result<Vec<TableEvent>, RepositoryError> {
+        let mut db = self.database.lock().await;
+        let events = table.consume_events();
+        db.save(table);
+        Ok(events)
     }
 
     async fn save_tables(&self, tables: Vec<Table>) -> Result<Vec<TableEvent>, RepositoryError> {
-        Err(RepositoryError::InternalError)
+        // TODO: in reality this would be a transaction
+        let mut db = self.database.lock().await;
+        let mut events = vec![];
+        for mut table in tables {
+            events.extend(table.consume_events());
+            db.save(table);
+        }
+        Ok(events)
     }
 }
 
@@ -106,7 +118,6 @@ impl InMemoryTournamentRepository {
 #[async_trait]
 impl TournamentRepository for InMemoryTournamentRepository {
     async fn load_tournament(&self, id: TournamentId) -> Result<Tournament, RepositoryError> {
-        // let db = self.database.lock().unwrap();
         let db = self.database.lock().await;
         db.load(id).ok_or_else(|| RepositoryError::ResourceNotFound)
     }
@@ -128,32 +139,33 @@ mod tests {
 
     use super::*;
 
-    // #[test]
-    // fn multiple_table_transaction() {
-    //     let repository = InMemoryTableRepository::new();
-    //     let events = save_multiple_tables(&repository).unwrap();
-    //     assert_eq!(events.len(), 3);
-    // }
+    #[tokio::test]
+    async fn multiple_table_transaction() {
+        let repository = InMemoryTableRepository::new();
+        let tournament_id = TournamentId::new();
+        let table_ids = vec![TableId::new(), TableId::new(), TableId::new()];
+        let tables = create_tables(tournament_id, table_ids);
+        let events = repository.save_tables(tables).await.unwrap();
+        assert_eq!(events.len(), 3);
+    }
 
-    // #[test]
-    // fn tournament_saving() {
-    //     let mut repository = InMemoryTournamentRepository::new();
-    //     let table_spec = TableSpecification::new(5).unwrap();
-    //     let tournament_spec = TournamentSpecification::new(5, table_spec).unwrap();
-    //     let tournament = Tournament::new(TournamentId::new(), &tournament_spec);
-    //     let events = repository.save_tournament(tournament).unwrap();
-    //     assert_eq!(events.len(), 1);
-    // }
+    #[tokio::test]
+    async fn tournament_saving() {
+        let repository = InMemoryTournamentRepository::new();
+        let table_spec = TableSpecification::new(5).unwrap();
+        let tournament_spec = TournamentSpecification::new(5, table_spec).unwrap();
+        let tournament = Tournament::new(TournamentId::new(), &tournament_spec);
+        let events = repository.save_tournament(tournament).await.unwrap();
+        assert_eq!(events.len(), 1);
+    }
 
-    // fn save_multiple_tables<R: TableRepository>(repository: &R) -> Result<Vec<TableEvent>, ApplicationError> {
-    //     repository.with_tx(|tx| {
-    //         let table_spec = TableSpecification::new(9)?;
-    //         let tournament_id = TournamentId::new();
-    //         for _ in 0..3 {
-    //             let table = Table::new(TableId::new(), tournament_id, &table_spec);
-    //             tx.save_table(table)?;
-    //         }
-    //         Ok(())
-    //     })
-    // }
+    fn create_tables(tournament_id: TournamentId, table_ids: Vec<TableId>) -> Vec<Table> {
+        let table_spec = TableSpecification::new(9).unwrap();
+        let mut tables = vec![];
+        for table_id in table_ids {
+            let table = Table::new(table_id, tournament_id, &table_spec);
+            tables.push(table);
+        }
+        return tables
+    }
 }

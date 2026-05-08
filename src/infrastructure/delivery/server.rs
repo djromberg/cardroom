@@ -46,11 +46,6 @@ impl<TournamentServices: ProvideTournamentServices, TableServices: ProvideTableS
                 routing::post(endpoints::act_on_table::<TableServices::ActOnTableServiceType>)
             )
             .with_state(self.table_services.act_on_table_service())
-            .route(
-                "/dostuff",
-                routing::post(endpoints::do_stuff::<TournamentServices::DoStuffServiceType>)
-            )
-            .with_state(self.tournament_services.do_stuff_service())
             .layer(auth::create_auth_layer(vec![]));
         log::info!("serving cardroom application ...");
 
