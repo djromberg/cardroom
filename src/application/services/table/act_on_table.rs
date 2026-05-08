@@ -1,7 +1,7 @@
 use crate::application::ApplicationError;
 use crate::application::AuthInfo;
 use crate::application::EventBus;
-use crate::application::TableRepository;
+use crate::application::TableRepositorySimple;
 
 use crate::domain::TableAction;
 use crate::domain::TableEvent;
@@ -25,7 +25,7 @@ pub struct ActOnTableService<Repository> {
     event_bus: EventBus<TableEvent>,
 }
 
-impl<Repository: TableRepository> ActOnTableService<Repository> {
+impl<Repository: TableRepositorySimple> ActOnTableService<Repository> {
     pub fn new(repository: Repository, event_bus: EventBus<TableEvent>) -> Self {
         Self { repository, event_bus }
     }
@@ -33,12 +33,9 @@ impl<Repository: TableRepository> ActOnTableService<Repository> {
     async fn act_on_table(&self, table_id: TableId, action: TableAction, auth_info: &AuthInfo) -> Result<(), ApplicationError> {
         let player_id = auth_info.expect_participant()?;
         log::info!("Player {:} is trying to act on table {:?} with action {:?}", player_id, table_id, action);
-        let events = self.repository.with_tx(|tx| {
-            let mut table = tx.load_table(table_id)?;
-            table.act(player_id, action)?;
-            tx.save_table(table)?;
-            Ok(())
-        }).await?;
+        let mut table = self.repository.load_table(table_id).await?;
+        table.act(player_id, action)?;
+        let events = self.repository.save_table(table).await?;
         log::info!("Player acted on table {:?} with action {:?}", table_id, action);
         self.event_bus.send(events);
         Ok(())
@@ -46,7 +43,7 @@ impl<Repository: TableRepository> ActOnTableService<Repository> {
 }
 
 #[async_trait]
-impl<Repository: TableRepository> ActOnTable for ActOnTableService<Repository> {
+impl<Repository: TableRepositorySimple> ActOnTable for ActOnTableService<Repository> {
     async fn bet(&self, table_id: Uuid, amount: u32, auth_info: &AuthInfo) -> Result<(), ApplicationError> {
         self.act_on_table(TableId::from_uuid(table_id), TableAction::Bet(amount), auth_info).await
     }

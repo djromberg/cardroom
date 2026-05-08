@@ -1,5 +1,4 @@
 use crate::application::RepositoryError;
-use crate::application::ApplicationError;
 use crate::domain::Table;
 use crate::domain::TableEvent;
 use crate::domain::TableId;
@@ -10,17 +9,11 @@ use crate::domain::TournamentId;
 use async_trait::async_trait;
 
 
-pub trait TableRepositoryTransaction {
-    fn load_table(&self, id: TableId) -> Result<Table, RepositoryError>;
-    fn save_table(&mut self, table: Table) -> Result<(), RepositoryError>;
-}
-
-
 #[async_trait]
-pub trait TableRepository: Clone + Sync + Send + 'static {
-    async fn with_tx<F>(&self, f: F) -> Result<Vec<TableEvent>, ApplicationError>
-    where
-        F: FnOnce(&mut dyn TableRepositoryTransaction) -> Result<(), ApplicationError> + Send;
+pub trait TableRepositorySimple: Clone + Sync + Send + 'static {
+    async fn load_table(&self, table_id: TableId) -> Result<Table, RepositoryError>;
+    async fn save_table(&self, table: Table) -> Result<Vec<TableEvent>, RepositoryError>;
+    async fn save_tables(&self, tables: Vec<Table>) -> Result<Vec<TableEvent>, RepositoryError>;
 }
 
 

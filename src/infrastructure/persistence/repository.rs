@@ -1,7 +1,5 @@
-use crate::application::TableRepository;
-use crate::application::TableRepositoryTransaction;
+use crate::application::TableRepositorySimple;
 use crate::application::RepositoryError;
-use crate::application::ApplicationError;
 use crate::application::TournamentRepository;
 use crate::domain::Table;
 use crate::domain::TableEvent;
@@ -41,37 +39,6 @@ impl InMemoryTableDatabase {
 }
 
 
-#[derive(Debug)]
-struct InMemoryTableTransaction<'a> {
-    database: &'a mut InMemoryTableDatabase,
-    events: Vec<TableEvent>,
-}
-
-impl<'a> InMemoryTableTransaction<'a> {
-    pub fn new(database: &'a mut InMemoryTableDatabase) -> Self {
-        Self { database, events: vec![] }
-    }
-
-    pub fn consume_events(&mut self) -> Vec<TableEvent> {
-        std::mem::take(&mut self.events)
-    }
-}
-
-impl TableRepositoryTransaction for InMemoryTableTransaction<'_> {
-    fn load_table(&self, table_id: TableId) -> Result<Table, RepositoryError> {
-        self.database.load(table_id).ok_or_else(|| RepositoryError::ResourceNotFound)
-    }
-
-    fn save_table(&mut self, table: Table) -> Result<(), RepositoryError> {
-        let mut table = table; // TODO: maybe change consume_events() to events() and copy them
-        self.events.extend(table.consume_events());
-        // TODO: think about optimistic locking approach
-        self.database.save(table);
-        Ok(())
-    }
-}
-
-
 #[derive(Debug, Clone)]
 pub struct InMemoryTableRepository {
     database: Arc<AsyncMutex<InMemoryTableDatabase>>,
@@ -83,16 +50,19 @@ impl InMemoryTableRepository {
     }
 }
 
+
 #[async_trait]
-impl TableRepository for InMemoryTableRepository {
-    async fn with_tx<F>(&self, f: F) -> Result<Vec<TableEvent>, ApplicationError>
-        where
-            F: FnOnce(&mut dyn TableRepositoryTransaction) -> Result<(), ApplicationError> + Send {
-        let mut db = self.database.lock().await;
-        let mut tx = InMemoryTableTransaction::new(&mut db);
-        f(&mut tx)?;
-        // here is the place where real transaction successfully commit or will be rolled back
-        Ok(tx.consume_events())
+impl TableRepositorySimple for InMemoryTableRepository {
+    async fn load_table(&self, table_id: TableId) -> Result<Table, RepositoryError> {
+        Err(RepositoryError::InternalError)
+    }
+
+    async fn save_table(&self, table: Table) -> Result<Vec<TableEvent>, RepositoryError> {
+        Err(RepositoryError::InternalError)
+    }
+
+    async fn save_tables(&self, tables: Vec<Table>) -> Result<Vec<TableEvent>, RepositoryError> {
+        Err(RepositoryError::InternalError)
     }
 }
 

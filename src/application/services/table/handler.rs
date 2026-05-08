@@ -24,7 +24,8 @@ impl<ServiceProvider: ProvidePrivateTableServices> TournamentEventHandler<Servic
                 TournamentEventType::TournamentCreated { table_spec, table_ids } => {
                     log::info!("Tournament created, opening tables ...");
                     let service = self.provider.open_tables_service();
-                    service.open_tables(event.tournament_id, table_ids, table_spec); // TODO: handle error
+                    // TODO: handle error
+                    _ = service.open_tables(event.tournament_id, table_ids, table_spec).await;
                 },
                 _ => {},
             }
