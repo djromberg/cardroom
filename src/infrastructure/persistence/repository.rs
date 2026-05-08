@@ -1,4 +1,4 @@
-use crate::application::TableRepositorySimple;
+use crate::application::TableRepository;
 use crate::application::RepositoryError;
 use crate::application::TournamentRepository;
 use crate::domain::Table;
@@ -52,7 +52,7 @@ impl InMemoryTableRepository {
 
 
 #[async_trait]
-impl TableRepositorySimple for InMemoryTableRepository {
+impl TableRepository for InMemoryTableRepository {
     async fn load_table(&self, table_id: TableId) -> Result<Table, RepositoryError> {
         Err(RepositoryError::InternalError)
     }

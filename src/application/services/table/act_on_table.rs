@@ -1,7 +1,7 @@
 use crate::application::ApplicationError;
 use crate::application::AuthInfo;
 use crate::application::EventBus;
-use crate::application::TableRepositorySimple;
+use crate::application::TableRepository;
 
 use crate::domain::TableAction;
 use crate::domain::TableEvent;
@@ -25,7 +25,7 @@ pub struct ActOnTableService<Repository> {
     event_bus: EventBus<TableEvent>,
 }
 
-impl<Repository: TableRepositorySimple> ActOnTableService<Repository> {
+impl<Repository: TableRepository> ActOnTableService<Repository> {
     pub fn new(repository: Repository, event_bus: EventBus<TableEvent>) -> Self {
         Self { repository, event_bus }
     }
@@ -43,7 +43,7 @@ impl<Repository: TableRepositorySimple> ActOnTableService<Repository> {
 }
 
 #[async_trait]
-impl<Repository: TableRepositorySimple> ActOnTable for ActOnTableService<Repository> {
+impl<Repository: TableRepository> ActOnTable for ActOnTableService<Repository> {
     async fn bet(&self, table_id: Uuid, amount: u32, auth_info: &AuthInfo) -> Result<(), ApplicationError> {
         self.act_on_table(TableId::from_uuid(table_id), TableAction::Bet(amount), auth_info).await
     }

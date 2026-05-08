@@ -1,6 +1,6 @@
 use crate::application::ApplicationError;
 use crate::application::EventBus;
-use crate::application::TableRepositorySimple;
+use crate::application::TableRepository;
 use crate::domain::Table;
 use crate::domain::TableEvent;
 use crate::domain::TableId;
@@ -22,7 +22,7 @@ pub struct OpenTablesService<Repository> {
     event_bus: EventBus<TableEvent>,
 }
 
-impl<Repository: TableRepositorySimple> OpenTablesService<Repository> {
+impl<Repository: TableRepository> OpenTablesService<Repository> {
     pub fn new(repository: Repository, event_bus: EventBus<TableEvent>) -> Self {
         Self { repository, event_bus }
     }
@@ -30,7 +30,7 @@ impl<Repository: TableRepositorySimple> OpenTablesService<Repository> {
 }
 
 #[async_trait]
-impl<Repository: TableRepositorySimple> OpenTables for OpenTablesService<Repository> {
+impl<Repository: TableRepository> OpenTables for OpenTablesService<Repository> {
     async fn open_tables(&self, tournament_id: TournamentId, table_ids: Vec<TableId>, table_spec: TableSpecification) -> Result<(), ApplicationError> {
         let mut tables = vec![];
         for table_id in table_ids {

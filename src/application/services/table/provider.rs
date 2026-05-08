@@ -3,7 +3,7 @@ use crate::application::ActOnTableService;
 use crate::application::EventBus;
 use crate::application::OpenTables;
 use crate::application::OpenTablesService;
-use crate::application::TableRepositorySimple;
+use crate::application::TableRepository;
 
 use crate::domain::TableEvent;
 
@@ -35,7 +35,7 @@ impl<Repository> TableServiceProvider<Repository> {
 }
 
 
-impl<Repository: TableRepositorySimple> ProvideTableServices for TableServiceProvider<Repository> {
+impl<Repository: TableRepository> ProvideTableServices for TableServiceProvider<Repository> {
     type ActOnTableServiceType = ActOnTableService<Repository>;
 
     fn act_on_table_service(&self) -> Self::ActOnTableServiceType {
@@ -45,7 +45,7 @@ impl<Repository: TableRepositorySimple> ProvideTableServices for TableServicePro
 
 
 
-impl<Repository: TableRepositorySimple> ProvidePrivateTableServices for TableServiceProvider<Repository> {
+impl<Repository: TableRepository> ProvidePrivateTableServices for TableServiceProvider<Repository> {
     type OpenTablesServiceType = OpenTablesService<Repository>;
 
     fn open_tables_service(&self) -> Self::OpenTablesServiceType {
