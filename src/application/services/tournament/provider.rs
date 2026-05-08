@@ -1,7 +1,13 @@
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
 use tokio::sync::broadcast::Receiver;
+use uuid::Uuid;
 
 use crate::application::CreateTournament;
 use crate::application::CreateTournamentService;
+use crate::application::DoStuff;
+use crate::application::DoStuffService;
 use crate::application::EventBus;
 use crate::application::RegisterPlayer;
 use crate::application::RegisterPlayerService;
@@ -13,9 +19,11 @@ use crate::domain::TournamentEvent;
 pub trait ProvideTournamentServices {
     type CreateTournamentServiceType: CreateTournament + Clone + Send + Sync + 'static;
     type RegisterPlayerServiceType: RegisterPlayer + Clone + Send + Sync + 'static;
+    type DoStuffServiceType: DoStuff + Clone + Send + Sync + 'static;
 
     fn create_tournament_service(&self) -> Self::CreateTournamentServiceType;
     fn register_player_service(&self) -> Self::RegisterPlayerServiceType;
+    fn do_stuff_service(&self) -> Self::DoStuffServiceType;
 }
 
 
@@ -40,6 +48,7 @@ impl<Repository> TournamentServiceProvider<Repository> {
 impl<Repository: TournamentRepository> ProvideTournamentServices for TournamentServiceProvider<Repository> {
     type CreateTournamentServiceType = CreateTournamentService<Repository>;
     type RegisterPlayerServiceType = RegisterPlayerService<Repository>;
+    type DoStuffServiceType = DoStuffService;
 
     fn create_tournament_service(&self) -> Self::CreateTournamentServiceType {
         CreateTournamentService::new(self.repository.clone(), self.event_bus.clone())
@@ -47,6 +56,11 @@ impl<Repository: TournamentRepository> ProvideTournamentServices for TournamentS
 
     fn register_player_service(&self) -> Self::RegisterPlayerServiceType {
         RegisterPlayerService::new(self.repository.clone(), self.event_bus.clone())
+    }
+
+    fn do_stuff_service(&self) -> Self::DoStuffServiceType {
+        let resource = Arc::new(Mutex::new(Uuid::new_v4()));
+        DoStuffService::new(resource, self.event_bus.clone())
     }
 }
 
