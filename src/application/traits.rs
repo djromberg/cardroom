@@ -16,10 +16,11 @@ pub trait TableRepositoryTransaction {
 }
 
 
+#[async_trait]
 pub trait TableRepository: Clone + Sync + Send + 'static {
-    fn with_tx<F>(&self, f: F) -> Result<Vec<TableEvent>, ApplicationError>
+    async fn with_tx<F>(&self, f: F) -> Result<Vec<TableEvent>, ApplicationError>
     where
-        F: FnOnce(&mut dyn TableRepositoryTransaction) -> Result<(), ApplicationError>;
+        F: FnOnce(&mut dyn TableRepositoryTransaction) -> Result<(), ApplicationError> + Send;
 }
 
 

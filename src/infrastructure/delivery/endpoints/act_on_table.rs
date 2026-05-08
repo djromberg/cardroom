@@ -29,5 +29,5 @@ pub async fn act_on_table<Service: ActOnTable>(
         ActOnTableRequest::Bet(amount) => service.bet(table_id, amount, &auth_info),
         ActOnTableRequest::Check => service.check(table_id, &auth_info),
         ActOnTableRequest::Fold => service.fold(table_id, &auth_info),
-    }
+    }.await
 }

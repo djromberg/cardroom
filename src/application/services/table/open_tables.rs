@@ -7,9 +7,12 @@ use crate::domain::TableId;
 use crate::domain::TableSpecification;
 use crate::domain::TournamentId;
 
+use async_trait::async_trait;
 
+
+#[async_trait]
 pub trait OpenTables {
-    fn open_tables(&self, tournament_id: TournamentId, table_ids: Vec<TableId>, table_spec: TableSpecification) -> Result<(), ApplicationError>;
+    async fn open_tables(&self, tournament_id: TournamentId, table_ids: Vec<TableId>, table_spec: TableSpecification) -> Result<(), ApplicationError>;
 }
 
 
@@ -26,8 +29,9 @@ impl<Repository: TableRepository> OpenTablesService<Repository> {
 
 }
 
+#[async_trait]
 impl<Repository: TableRepository> OpenTables for OpenTablesService<Repository> {
-    fn open_tables(&self, tournament_id: TournamentId, table_ids: Vec<TableId>, table_spec: TableSpecification) -> Result<(), ApplicationError> {
+    async fn open_tables(&self, tournament_id: TournamentId, table_ids: Vec<TableId>, table_spec: TableSpecification) -> Result<(), ApplicationError> {
         let events = self.repository.with_tx(|tx| {
             for table_id in table_ids {
                 log::info!("Creating table {:?}", table_id);
@@ -35,7 +39,7 @@ impl<Repository: TableRepository> OpenTables for OpenTablesService<Repository> {
                 tx.save_table(table)?;
             }
             Ok(())
-        })?;
+        }).await?;
         log::info!("Tables opened for tournament {:?}", tournament_id);
         self.event_bus.send(events);
         Ok(())
