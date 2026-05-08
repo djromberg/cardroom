@@ -16,6 +16,6 @@ pub async fn register_player<Service: RegisterPlayer>(
     extract::Path(tournament_id): extract::Path<Uuid>,
 ) -> Result<(), ApplicationError> {
     let auth_info = create_auth_info(token)?;
-    service.register_player(tournament_id, &auth_info)?;
+    service.register_player(tournament_id, &auth_info).await?;
     Ok(())
 }
