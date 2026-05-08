@@ -7,6 +7,7 @@ use crate::application::TableServiceProvider;
 use crate::application::TournamentServiceProvider;
 use crate::application::TournamentEventHandler;
 
+use crate::infrastructure::InMemoryResourceAccessor;
 use crate::infrastructure::InMemoryTableRepository;
 use crate::infrastructure::InMemoryTournamentRepository;
 use crate::infrastructure::AxumServer;
@@ -18,7 +19,8 @@ use std::io::Error;
 async fn main() -> Result<(), Error> {
     env_logger::init();
     let tournament_service_provider = TournamentServiceProvider::new(
-        InMemoryTournamentRepository::new()
+        InMemoryTournamentRepository::new(),
+        InMemoryResourceAccessor::new(),
     );
     let table_service_provider = TableServiceProvider::new(
         InMemoryTableRepository::new()

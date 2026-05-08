@@ -1,41 +1,59 @@
-use std::sync::Arc;
-
 use crate::application::AuthInfo;
 use crate::application::ApplicationError;
 use crate::application::EventBus;
+use crate::application::RepositoryError;
 use crate::domain::TournamentEvent;
 
 use async_trait::async_trait;
-use tokio::sync::Mutex;
 use uuid::Uuid;
 
 
+#[derive(Debug, Clone)]
+pub struct Stuff {
+    id: Uuid
+}
+
+impl Stuff {
+    pub fn new(id: Uuid) -> Self {
+        Self { id }
+    }
+
+    pub fn mutate(&mut self) {
+    }
+}
+
+
 #[async_trait]
-pub trait DoStuff {
+pub trait AccessStuff: Clone + Sync + Send + 'static {
+    async fn access_stuff(&self, stuff_id: Uuid) -> Result<Stuff, RepositoryError>;
+}
+
+
+#[async_trait]
+pub trait DoStuff: Clone + Send + Sync + 'static {
     async fn do_stuff(&self, do_it_cool: bool, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError>;
 }
 
 
 #[derive(Debug, Clone)]
-pub struct DoStuffService {
-    resource: Arc<Mutex<Uuid>>,
+pub struct DoStuffService<Repository> {
+    repository: Repository,
     event_bus: EventBus<TournamentEvent>,
 }
 
-impl DoStuffService {
-    pub fn new(resource: Arc<Mutex<Uuid>>, event_bus: EventBus<TournamentEvent>) -> Self {
-        Self { resource, event_bus }
+impl<Repository> DoStuffService<Repository> {
+    pub fn new(repository: Repository, event_bus: EventBus<TournamentEvent>) -> Self {
+        Self { repository, event_bus }
     }
 }
 
 #[async_trait]
-impl DoStuff for DoStuffService {
+impl<Repository: AccessStuff> DoStuff for DoStuffService<Repository> {
     async fn do_stuff(&self, do_it_cool: bool, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError> {
         let account_id = auth_info.expect_organizer()?;
-        let mut resource = self.resource.lock().await;
-        *resource = account_id;
-        log::info!("Changed to {}", *resource);
+        let mut stuff = self.repository.access_stuff(account_id).await?;
+        stuff.mutate();
         self.event_bus.send(vec![]);
-        Ok(*resource)
+        Ok(account_id)
     }
 }
