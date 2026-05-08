@@ -9,11 +9,13 @@ use crate::domain::TournamentEvent;
 use crate::domain::TournamentId;
 use crate::domain::TournamentSpecification;
 
+use async_trait::async_trait;
 use uuid::Uuid;
 
 
+#[async_trait]
 pub trait CreateTournament {
-    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError>;
+    async fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError>;
 }
 
 
@@ -29,14 +31,15 @@ impl<Repository: TournamentRepository> CreateTournamentService<Repository> {
     }
 }
 
+#[async_trait]
 impl<Repository: TournamentRepository> CreateTournament for CreateTournamentService<Repository> {
-    fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError> {
+    async fn create_tournament(&self, table_count: u8, table_seat_count: u8, auth_info: &AuthInfo) -> Result<Uuid, ApplicationError> {
         let _account_id = auth_info.expect_organizer()?;
         let table_spec = TableSpecification::new(table_seat_count)?;
         let tournament_spec = TournamentSpecification::new(table_count, table_spec)?;
         let tournament_id = TournamentId::new();
         let tournament = Tournament::new(tournament_id, &tournament_spec);
-        let events = self.repository.save_tournament(tournament)?;
+        let events = self.repository.save_tournament(tournament).await?;
         log::info!("Tournament {:?} created by {:}", tournament_id, auth_info.given_name());
         self.event_bus.send(events);
         Ok(tournament_id.uuid())

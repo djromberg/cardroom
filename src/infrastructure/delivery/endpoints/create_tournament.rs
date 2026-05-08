@@ -32,7 +32,7 @@ pub async fn create_tournament<Service: CreateTournament>(
     extract::Json(request): extract::Json<CreateTournamentRequest>,
 ) -> Result<extract::Json<CreateTournamentResponse>, ApplicationError> {
     let auth_info = create_auth_info(token)?;
-    let tournament_id = service.create_tournament(request.table_count, request.table_seat_count, &auth_info)?;
+    let tournament_id = service.create_tournament(request.table_count, request.table_seat_count, &auth_info).await?;
     let response = CreateTournamentResponse { tournament_id };
     Ok(extract::Json(response))
 }

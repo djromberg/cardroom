@@ -7,6 +7,8 @@ use crate::domain::Tournament;
 use crate::domain::TournamentEvent;
 use crate::domain::TournamentId;
 
+use async_trait::async_trait;
+
 
 pub trait TableRepositoryTransaction {
     fn load_table(&self, id: TableId) -> Result<Table, RepositoryError>;
@@ -21,7 +23,8 @@ pub trait TableRepository: Clone + Sync + Send + 'static {
 }
 
 
+#[async_trait]
 pub trait TournamentRepository: Clone + Sync + Send + 'static {
-    fn load_tournament(&self, id: TournamentId) -> Result<Tournament, RepositoryError>;
-    fn save_tournament(&self, tournament: Tournament) -> Result<Vec<TournamentEvent>, RepositoryError>;
+    async fn load_tournament(&self, id: TournamentId) -> Result<Tournament, RepositoryError>;
+    async fn save_tournament(&self, tournament: Tournament) -> Result<Vec<TournamentEvent>, RepositoryError>;
 }

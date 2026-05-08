@@ -36,11 +36,11 @@ impl<TournamentServices: ProvideTournamentServices, TableServices: ProvideTableS
                 routing::post(endpoints::create_tournament::<TournamentServices::CreateTournamentServiceType>)
             )
             .with_state(self.tournament_services.create_tournament_service())
-            .route(
-                "/tournaments/{tournament_id}/registration",
-                routing::post(endpoints::register_player::<TournamentServices::RegisterPlayerServiceType>)
-            )
-            .with_state(self.tournament_services.register_player_service())
+            // .route(
+            //     "/tournaments/{tournament_id}/registration",
+            //     routing::post(endpoints::register_player::<TournamentServices::RegisterPlayerServiceType>)
+            // )
+            // .with_state(self.tournament_services.register_player_service())
             .route(
                 "/tables/{table_id}/action",
                 routing::post(endpoints::act_on_table::<TableServices::ActOnTableServiceType>)
