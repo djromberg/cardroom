@@ -26,6 +26,12 @@ impl TableId {
     }
 }
 
+impl std::fmt::Display for TableId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TableSpecification {
