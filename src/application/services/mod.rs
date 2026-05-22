@@ -3,3 +3,9 @@ mod tournament;
 
 pub use table::*;
 pub use tournament::*;
+
+mod foo;
+mod bar;
+
+pub use foo::*;
+pub use bar::*;
