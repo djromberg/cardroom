@@ -1,6 +1,7 @@
+use super::player::PlayerSpec;
+use super::table::TableId;
+use super::table::TableSpec;
 use super::tournament::TournamentId;
-
-use uuid::Uuid;
 
 
 #[derive(Debug, Clone)]
@@ -13,15 +14,17 @@ pub struct TournamentEvent {
 #[derive(Debug, Clone)]
 pub enum TournamentEventType {
     TableOpened {
-        table_id: Uuid,
-        seat_count: u8,
+        table_id: TableId,
+        table_spec: TableSpec,
     },
-    PlayerRegistered {
-        table_id: Uuid,
+    PlayerSeatedAtTable {
+        player_spec: PlayerSpec,
+        stack: u32,
+        table_id: TableId,
     },
     TournamentStarted,
     TableClosed {
-        table_id: Uuid,
+        table_id: TableId,
         // TODO: remaining players moved to table(s) ...
     },
     TournamentFinished,

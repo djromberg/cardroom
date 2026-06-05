@@ -1,10 +1,37 @@
 use super::error::DomainError;
 use super::event::TournamentEvent;
 use super::event::TournamentEventType;
+use super::player::PlayerSpec;
 use super::player::TournamentPlayer;
+use super::table::TableSpec;
 use super::table::TournamentTable;
 
 use uuid::Uuid;
+
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TournamentSpec {
+    table_count: u16,
+    table_spec: TableSpec,
+}
+
+impl TournamentSpec {
+    pub fn new(table_count: u16, table_spec: TableSpec) -> Result<Self, DomainError> {
+        if table_count > 0 {
+            Ok(Self { table_count, table_spec })
+        } else {
+            Err(DomainError::InvalidTournamentSpecification)
+        }
+    }
+
+    pub fn table_spec(&self) -> TableSpec {
+        self.table_spec.clone()
+    }
+
+    pub fn player_count(&self) -> u16 {
+        self.table_count * self.table_spec.seat_count() as u16
+    }
+}
 
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -20,23 +47,22 @@ impl TournamentId {
 #[derive(Debug, Clone)]
 pub struct Tournament {
     id: TournamentId,
+    spec: TournamentSpec,
     stage: TournamentStage,
     tables: Vec<TournamentTable>,
+    ranking: Vec<PlayerSpec>,
     events: Vec<TournamentEvent>,
 }
 
 impl Tournament {
-    pub fn new(table_count: u16, table_seat_count: u8) -> Self {
-        let mut tables = vec![];
-        for _ in 0..table_count {
-            let table = TournamentTable::new(table_seat_count);
-            tables.push(table);
-        }
+    pub fn new(spec: TournamentSpec) -> Self {
         Self {
             id: TournamentId::new(),
-            stage: TournamentStage::Registration,
-            tables,
-            events: vec![]
+            spec,
+            stage: TournamentStage::begin(),
+            tables: vec![],
+            ranking: vec![],
+            events: vec![],
         }
     }
 
@@ -44,10 +70,9 @@ impl Tournament {
         self.id
     }
 
-    pub fn register_player(&mut self, player_id: Uuid, nickname: String) -> Result<(), DomainError> {
+    pub fn register_player(&mut self, player_spec: PlayerSpec) -> Result<(), DomainError> {
         if self.stage.is_registration_allowed() {
-            let player = TournamentPlayer::new(player_id, nickname, 1500)?;
-            self.seat_player(player);
+            self.seat_player(player_spec);
             if self.is_ready_to_start() {
                 self.start();
             }
@@ -61,14 +86,35 @@ impl Tournament {
         std::mem::take(&mut self.events)
     }
 
-    fn open_table(&mut self, table_seat_count: u8) {
-        let table = TournamentTable::new(table_seat_count);
+    fn seat_player(&mut self, player_spec: PlayerSpec) {
+        if self.new_table_required() {
+            self.open_table();
+        }
+        let table = self.tables.last_mut().unwrap();
+        let table_id = table.id();
+        let stack = 1500u32; // TODO: make this part of the tournament spec
+        let player = TournamentPlayer::new(&player_spec, stack);
+        table.seat_player(player);
+        self.record_event(TournamentEventType::PlayerSeatedAtTable {
+            player_spec,
+            stack,
+            table_id,
+        });
+    }
+
+    fn new_table_required(&self) -> bool {
+        self.tables.last().map_or(true, |table| table.all_seats_taken())
+    }
+
+    fn open_table(&mut self) {
+        let table_spec = self.spec.table_spec();
+        let table = TournamentTable::new(&table_spec);
         let table_id = table.id();
         self.tables.push(table);
         self.record_event(
             TournamentEventType::TableOpened {
                 table_id,
-                seat_count: table_seat_count,
+                table_spec
             }
         );
     }
@@ -98,13 +144,6 @@ impl Tournament {
         self.record_event(TournamentEventType::TournamentStarted);
     }
 
-    fn seat_player(&mut self, player: TournamentPlayer) {
-        let table_index = self.tables.iter().position(|table| table.has_free_seat()).unwrap();
-        self.tables[table_index].seat_player(player);
-        let table_id = self.tables[table_index].id();
-        self.record_event(TournamentEventType::PlayerRegistered { table_id });
-    }
-
     fn record_event(&mut self, event_type: TournamentEventType) {
         self.events.push(
             TournamentEvent { tournament_id: self.id, event_type }
@@ -121,7 +160,7 @@ enum TournamentStage {
 }
 
 impl TournamentStage {
-    pub fn new() -> Self {
+    pub fn begin() -> Self {
         Self::Registration
     }
 
