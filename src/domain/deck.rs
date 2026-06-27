@@ -3,7 +3,7 @@ use super::card::Card;
 const DECK_SIZE: usize = 52;
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Deck {
     cards: [Card; DECK_SIZE],
     next: usize,

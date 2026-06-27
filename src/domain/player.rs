@@ -1,3 +1,4 @@
+use super::card::Card;
 use super::hand::Hand;
 
 use uuid::Uuid;
@@ -34,6 +35,11 @@ impl Player {
     pub fn start_hand(&mut self) {
         assert!(self.hand.is_none());
         self.hand = Some(Hand::new());
+    }
+
+    pub fn deal_card(&mut self, card: Card) {
+        let hand = self.hand.as_mut().unwrap();
+        hand.receive_card(card);
     }
 
     pub fn place_bet(&mut self, amount: u32) -> u32 {
