@@ -5,44 +5,40 @@ const DECK_SIZE: usize = 52;
 
 #[derive(Debug)]
 pub struct Deck {
-    shuffle: [usize; DECK_SIZE],
+    cards: [Card; DECK_SIZE],
     next: usize,
 }
 
 impl Deck {
-    pub fn new(shuffle: [usize; DECK_SIZE]) -> Self {
-        assert_valid_shuffle(&shuffle);
-        Self { shuffle, next: 0 }
+    pub fn new(cards: [Card; DECK_SIZE]) -> Self {
+        assert_valid_cards(&cards);
+        Self { cards, next: 0 }
     }
 
-    pub fn cards_drawn(&self) -> usize {
-        self.next
+    pub fn is_untouched(&self) -> bool {
+        self.next == 0
     }
 
     pub fn draw_card(&mut self) -> Card {
-        let result = Card(self.next as u8);
+        let card = self.cards[self.next];
         self.next += 1;
-        result
+        card
     }
 }
 
 
-fn assert_valid_shuffle(indices: &[usize; DECK_SIZE]) {
+trait Shuffle {
+    fn shuffle(&self) -> Deck;
+}
+
+
+fn assert_valid_cards(cards: &[Card; DECK_SIZE]) {
     let mut seen = [false; DECK_SIZE];
 
-    for &index in indices {
-        assert!(
-            index < DECK_SIZE,
-            "invalid card: {index}; expected 0..{}",
-            DECK_SIZE - 1
-        );
-
-        assert!(
-            !seen[index],
-            "duplicate cards: {index}"
-        );
-
-        seen[index] = true;
+    for card in cards {
+        let value = card.value() as usize;
+        assert!(!seen[value], "duplicate card: {value}");
+        seen[value] = true;
     }
 }
 
@@ -53,34 +49,26 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "duplicate cards: 0")]
+    #[should_panic(expected = "duplicate card: 0")]
     fn new_with_duplicate_cards() {
-        let shuffle= [0usize; DECK_SIZE];
-        Deck::new(shuffle);
-    }
-
-    #[test]
-    #[should_panic(expected = "invalid card: 52; expected 0..51")]
-    fn new_with_invalid_card() {
-        let mut shuffle: [usize; 52] = std::array::from_fn(|i| i);
-        shuffle[42] = 52;
-        Deck::new(shuffle);
+        let cards = std::array::from_fn(|_| Card::new(0));
+        Deck::new(cards);
     }
 
     #[test]
     fn new() {
-        let shuffle: [usize; 52] = std::array::from_fn(|i| i);
-        let deck = Deck::new(shuffle);
-        assert_eq!(deck.cards_drawn(), 0);
+        let cards = std::array::from_fn(|i| Card::new(i as u8));
+        let deck = Deck::new(cards);
+        assert!(deck.is_untouched());
     }
 
     #[test]
     fn draw_card() {
-        let shuffle: [usize; 52] = std::array::from_fn(|i| i);
-        let mut deck = Deck::new(shuffle);
+        let cards = std::array::from_fn(|i| Card::new(i as u8));
+        let mut deck = Deck::new(cards);
         let card = deck.draw_card();
-        assert_eq!(card, Card(0));
-        assert_eq!(deck.cards_drawn(), 1);
+        assert_eq!(card, Card::new(0));
+        assert!(!deck.is_untouched());
     }
 
 }

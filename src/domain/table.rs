@@ -1,4 +1,5 @@
 use super::card::Card;
+use super::deck::Deck;
 use super::player::Player;
 use super::player::PlayerData;
 
@@ -11,6 +12,7 @@ pub struct Table {
     seats: Vec<Option<Player>>,
     button: u8,
     state: TableState,
+    game: Option<Game>,
     events: Vec<TableEvent>,
 }
 
@@ -28,6 +30,7 @@ impl Table {
             seats,
             button: button_position,
             state: TableState::Idle,
+            game: None,
             events: vec![
                 TableEvent {
                     table_id: id,
@@ -60,7 +63,8 @@ impl Table {
         self.add_event(event_type);
     }
 
-    pub fn start_game(&mut self) {
+    pub fn start_game(&mut self, deck: Deck) {
+        assert!(deck.is_untouched(), "deck not untouched");
         assert!(matches!(self.state, TableState::Idle));
         self.forward_button();
         self.start_hands();
@@ -254,6 +258,20 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "deck not untouched")]
+    fn start_game_with_touched_deck() {
+        let player_datas = vec![
+            create_player_data("Daniel"),
+            create_player_data("Maria"),
+            create_player_data("Tillmann"),
+        ];
+        let mut table = create_table_with_seated_players(player_datas);
+        let mut deck = create_unshuffled_deck();
+        _ = deck.draw_card();
+        table.start_game(deck);
+    }
+
+    #[test]
     fn start_game_with_three_players() {
         let player_datas = vec![
             create_player_data("Daniel"),
@@ -262,7 +280,8 @@ mod tests {
         ];
         let mut table = create_table_with_seated_players(player_datas);
 
-        table.start_game();
+        let deck = create_unshuffled_deck();
+        table.start_game(deck);
 
         assert_eq!(table.consume_events(), vec![
             TableEvent {
@@ -298,7 +317,8 @@ mod tests {
         ];
         let mut table = create_table_with_seated_players(player_datas);
 
-        table.start_game();
+        let deck = create_unshuffled_deck();
+        table.start_game(deck);
 
         assert_eq!(table.consume_events(), vec![
             TableEvent {
@@ -362,5 +382,10 @@ mod tests {
 
     fn create_player_data(nickname: &str) -> PlayerData {
         PlayerData::new(Uuid::new_v4(), nickname.to_string(), 1500)
+    }
+
+    fn create_unshuffled_deck() -> Deck {
+        let cards = std::array::from_fn(|i| Card::new(i as u8));
+        Deck::new(cards)
     }
 }
