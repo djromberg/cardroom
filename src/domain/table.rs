@@ -254,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn start_game() {
+    fn start_game_with_three_players() {
         let player_datas = vec![
             create_player_data("Daniel"),
             create_player_data("Maria"),
@@ -269,7 +269,7 @@ mod tests {
                 table_id: table.id(),
                 event_type: TableEventType::ButtonMoved { button_position: 0 },
             },
-            TableEvent { // small blind
+            TableEvent { // small blind after button
                 table_id: table.id(),
                 event_type: TableEventType::BetPlaced {
                     position: 1,
@@ -278,7 +278,7 @@ mod tests {
                     remaining_stack: 1475
                 },
             },
-            TableEvent { // big blind
+            TableEvent { // big blind after small blind
                 table_id: table.id(),
                 event_type: TableEventType::BetPlaced {
                     position: 2,
@@ -286,7 +286,43 @@ mod tests {
                     current_bet_sum: 50,
                     remaining_stack: 1450
                 },
-            }
+            },
+        ]);
+    }
+
+    #[test]
+    fn start_game_with_two_players() {
+        let player_datas = vec![
+            create_player_data("Daniel"),
+            create_player_data("Maria"),
+        ];
+        let mut table = create_table_with_seated_players(player_datas);
+
+        table.start_game();
+
+        assert_eq!(table.consume_events(), vec![
+            TableEvent {
+                table_id: table.id(),
+                event_type: TableEventType::ButtonMoved { button_position: 0 },
+            },
+            TableEvent { // small blind on button
+                table_id: table.id(),
+                event_type: TableEventType::BetPlaced {
+                    position: 0,
+                    amount: 25,
+                    current_bet_sum: 25,
+                    remaining_stack: 1475
+                },
+            },
+            TableEvent { // big blind after button
+                table_id: table.id(),
+                event_type: TableEventType::BetPlaced {
+                    position: 1,
+                    amount: 50,
+                    current_bet_sum: 50,
+                    remaining_stack: 1450
+                },
+            },
         ]);
     }
 
