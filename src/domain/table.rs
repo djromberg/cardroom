@@ -10,7 +10,7 @@ use uuid::Uuid;
 pub struct Table {
     id: Uuid,
     seats: Vec<Option<Player>>,
-    button: u8,
+    button: usize,
     state: TableState,
     game: Option<Game>,
     events: Vec<TableEvent>,
@@ -24,7 +24,7 @@ impl Table {
             // seats.push(Seat::new(position));
             seats.push(None);
         }
-        let button_position = seat_count - 1;
+        let button_position = seat_count as usize - 1;
         Self {
             id,
             seats,
@@ -36,7 +36,7 @@ impl Table {
                     table_id: id,
                     event_type: TableEventType::TableOpened {
                         seat_count,
-                        button_position,
+                        button_position: button_position as u8,
                     }
                 }
             ],
@@ -74,12 +74,12 @@ impl Table {
     }
 
     fn forward_button(&mut self) {
-        let mut index = SeatIndex::new((self.button + 1) as usize, self.seats.len());
+        let mut index = SeatIndex::new(self.button + 1, self.seats.len());
         while self.seats[index.position].is_none() {
             index = index.next();
         }
-        self.button = index.position as u8;
-        self.add_event(TableEventType::ButtonMoved { button_position: self.button });
+        self.button = index.position;
+        self.add_event(TableEventType::ButtonMoved { button_position: self.button as u8 });
     }
 
     fn start_hands(&mut self) {
