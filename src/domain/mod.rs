@@ -2,6 +2,7 @@
 // mod nickname;
 mod card;
 mod deck;
+mod game;
 mod hand;
 mod player;
 // mod services;

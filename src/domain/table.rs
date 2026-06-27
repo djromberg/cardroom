@@ -1,5 +1,5 @@
-use super::card::Card;
 use super::deck::Deck;
+use super::game::Game;
 use super::player::Player;
 use super::player::PlayerData;
 
@@ -226,26 +226,6 @@ enum TableState {
 }
 
 
-#[derive(Debug, Clone)]
-struct Game {
-    deck: Deck,
-    board: Vec<Card>,
-    pots: Vec<u32>,
-    request: Option<u8>,
-}
-
-impl Game {
-    pub fn new(deck: Deck) -> Self {
-        assert!(deck.is_untouched());
-        Self { deck, board: vec![], pots: vec![], request: None }
-    }
-
-    pub fn deal_player_card(&mut self) -> Card {
-        self.deck.draw_card()
-    }
-}
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -455,6 +435,9 @@ mod tests {
     fn create_player_data(nickname: &str) -> PlayerData {
         PlayerData::new(Uuid::new_v4(), nickname.to_string(), 1500)
     }
+
+
+    use crate::domain::card::Card;
 
     fn create_unshuffled_deck() -> Deck {
         let cards = std::array::from_fn(|i| Card::new(i as u8));
