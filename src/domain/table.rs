@@ -109,7 +109,7 @@ impl Table {
         let card = game.deal_player_card();
         let player = self.seats[position].as_mut().unwrap();
         player.deal_card(card);
-        self.add_event(TableEventType::CardDealt { position: position as u8 });
+        self.add_event(TableEventType::PlayerCardDealt { position: position as u8 });
     }
 
     fn pay_small_blind(&mut self) {
@@ -194,7 +194,7 @@ pub enum TableEventType {
         current_bet_sum: u32,
         remaining_stack: u32,
     },
-    CardDealt {
+    PlayerCardDealt {
         position: u8,
     }
 }
@@ -340,67 +340,83 @@ mod tests {
             },
             TableEvent {
                 table_id: table.id(),
-                event_type: TableEventType::CardDealt { position: 1 }
+                event_type: TableEventType::PlayerCardDealt { position: 1 }
             },
             TableEvent {
                 table_id: table.id(),
-                event_type: TableEventType::CardDealt { position: 2 }
+                event_type: TableEventType::PlayerCardDealt { position: 2 }
             },
             TableEvent {
                 table_id: table.id(),
-                event_type: TableEventType::CardDealt { position: 0 }
+                event_type: TableEventType::PlayerCardDealt { position: 0 }
             },
             TableEvent {
                 table_id: table.id(),
-                event_type: TableEventType::CardDealt { position: 1 }
+                event_type: TableEventType::PlayerCardDealt { position: 1 }
             },
             TableEvent {
                 table_id: table.id(),
-                event_type: TableEventType::CardDealt { position: 2 }
+                event_type: TableEventType::PlayerCardDealt { position: 2 }
             },
             TableEvent {
                 table_id: table.id(),
-                event_type: TableEventType::CardDealt { position: 0 }
+                event_type: TableEventType::PlayerCardDealt { position: 0 }
             },
         ]);
     }
 
-    // #[test]
-    // fn start_game_with_two_players() {
-    //     let player_datas = vec![
-    //         create_player_data("Daniel"),
-    //         create_player_data("Maria"),
-    //     ];
-    //     let mut table = create_table_with_seated_players(player_datas);
+    #[test]
+    fn start_game_with_two_players() {
+        let player_datas = vec![
+            create_player_data("Daniel"),
+            create_player_data("Maria"),
+        ];
+        let mut table = create_table_with_seated_players(player_datas);
 
-    //     let deck = create_unshuffled_deck();
-    //     table.start_game(deck);
+        let deck = create_unshuffled_deck();
+        table.start_game(deck);
 
-    //     assert_eq!(table.consume_events(), vec![
-    //         TableEvent {
-    //             table_id: table.id(),
-    //             event_type: TableEventType::ButtonMoved { button_position: 0 },
-    //         },
-    //         TableEvent { // small blind on button
-    //             table_id: table.id(),
-    //             event_type: TableEventType::BetPlaced {
-    //                 position: 0,
-    //                 amount: 25,
-    //                 current_bet_sum: 25,
-    //                 remaining_stack: 1475
-    //             },
-    //         },
-    //         TableEvent { // big blind after button
-    //             table_id: table.id(),
-    //             event_type: TableEventType::BetPlaced {
-    //                 position: 1,
-    //                 amount: 50,
-    //                 current_bet_sum: 50,
-    //                 remaining_stack: 1450
-    //             },
-    //         },
-    //     ]);
-    // }
+        assert_eq!(table.consume_events(), vec![
+            TableEvent {
+                table_id: table.id(),
+                event_type: TableEventType::ButtonMoved { button_position: 0 },
+            },
+            TableEvent { // small blind on button
+                table_id: table.id(),
+                event_type: TableEventType::BetPlaced {
+                    position: 0,
+                    amount: 25,
+                    current_bet_sum: 25,
+                    remaining_stack: 1475
+                },
+            },
+            TableEvent { // big blind after button
+                table_id: table.id(),
+                event_type: TableEventType::BetPlaced {
+                    position: 1,
+                    amount: 50,
+                    current_bet_sum: 50,
+                    remaining_stack: 1450
+                },
+            },
+            TableEvent {
+                table_id: table.id(),
+                event_type: TableEventType::PlayerCardDealt { position: 1 }
+            },
+            TableEvent {
+                table_id: table.id(),
+                event_type: TableEventType::PlayerCardDealt { position: 0 }
+            },
+            TableEvent {
+                table_id: table.id(),
+                event_type: TableEventType::PlayerCardDealt { position: 1 }
+            },
+            TableEvent {
+                table_id: table.id(),
+                event_type: TableEventType::PlayerCardDealt { position: 0 }
+            },
+        ]);
+    }
 
     fn create_table_with_seated_players(player_datas: Vec<PlayerData>) -> Table {
         let mut table = create_table(5);
