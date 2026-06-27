@@ -1,6 +1,7 @@
 // mod broadcast;
 // mod nickname;
 mod card;
+mod deck;
 mod hand;
 mod player;
 // mod services;
