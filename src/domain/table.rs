@@ -439,8 +439,9 @@ mod tests {
 
     use crate::domain::card::Card;
 
-    fn create_unshuffled_deck() -> Deck {
-        let cards = std::array::from_fn(|i| Card::new(i as u8));
-        Deck::new(cards)
-    }
+    // fn create_unshuffled_deck() -> Deck {
+    //     let cards = std::array::from_fn(|i| Card::new(i as u8));
+    //     let sequence = Card
+    //     Deck::new(cards)
+    // }
 }

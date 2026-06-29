@@ -8,8 +8,8 @@ impl Card {
         Self(value)
     }
 
-    pub fn value(&self) -> u8 {
-        self.0
+    pub fn order(&self) -> usize {
+        self.0 as usize
     }
 }
 
@@ -27,6 +27,6 @@ mod tests {
     #[test]
     fn new() {
         let card = Card::new(51);
-        assert_eq!(card.value(), 51);
+        assert_eq!(card.order(), 51);
     }
 }

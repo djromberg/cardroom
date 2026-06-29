@@ -1,12 +1,13 @@
 // mod broadcast;
 // mod nickname;
 mod card;
+mod dealer;
 mod deck;
-mod game;
+// mod game;
 mod hand;
 mod player;
 // mod services;
-mod table;
+// mod table;
 mod seat;
 // mod tournament;
 // mod traits;

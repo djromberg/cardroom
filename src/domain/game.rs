@@ -5,6 +5,7 @@ use super::deck::Deck;
 #[derive(Debug, Clone)]
 pub struct Game {
     deck: Deck,
+    deck_index: usize,
     board: Vec<Card>,
     pots: Vec<u32>,
 }
