@@ -3,7 +3,7 @@
 mod card;
 mod dealer;
 mod deck;
-// mod game;
+mod game;
 mod hand;
 mod player;
 // mod services;
