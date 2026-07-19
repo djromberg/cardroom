@@ -1,447 +1,88 @@
-use super::deck::Deck;
-use super::game::Game;
-use super::player::Player;
-use super::player::PlayerData;
-
-use uuid::Uuid;
+use super::hand::Hand;
+use super::shared::Chips;
+use super::shared::PlayerId;
+use super::shared::SeatNo;
+use super::shared::TableId;
 
 
 #[derive(Debug, Clone)]
 pub struct Table {
-    id: Uuid,
-    seats: Vec<Option<Player>>,
-    button: usize,
-    state: TableState,
-    game: Option<Game>,
+    id: TableId,
+    seats: Vec<Seat>,
+    hand: Option<Hand>,
     events: Vec<TableEvent>,
 }
 
 impl Table {
-    pub fn new(id: Uuid, seat_count: u8) -> Self {
+    pub fn open(id: TableId, seat_count: u8) -> Self {
         assert!(seat_count >= 2 && seat_count <= 10);
         let mut seats = vec![];
-        for _ in 0..seat_count {
-            // seats.push(Seat::new(position));
-            seats.push(None);
+        for i in 0..seat_count {
+            seats.push(Seat::new(SeatNo(i)))
         }
-        let button_position = seat_count as usize - 1;
-        Self {
-            id,
-            seats,
-            button: button_position,
-            state: TableState::Idle,
-            game: None,
-            events: vec![
-                TableEvent {
-                    table_id: id,
-                    event_type: TableEventType::TableOpened {
-                        seat_count,
-                        button_position: button_position as u8,
-                    }
-                }
-            ],
-        }
+        let events = vec![TableEvent::TableOpened {
+            table_id: id,
+            seat_count
+        }];
+        Self { id, seats, hand: None, events }
     }
 
-    pub fn consume_events(&mut self) -> Vec<TableEvent> {
-        std::mem::take(&mut self.events)
-    }
-
-    pub fn id(&self) -> Uuid {
-        self.id
-    }
-
-    pub fn seat_player(&mut self, player_data: PlayerData) {
-        // assert!(!self.has_player(data.player_id()));
-        let index = self.seats.iter().position(|seat| seat.is_none()).unwrap();
-        let player = Player::new(index as u8, player_data.clone());
-        _ = self.seats[index].insert(player);
-        let event_type = TableEventType::PlayerSeated {
-            position: index as u8,
-            player_data,
-        };
-        self.add_event(event_type);
-    }
-
-    pub fn start_game(&mut self, deck: Deck) {
-        assert!(deck.is_untouched(), "deck not untouched");
-        assert!(self.game.is_none());
-        self.game = Some(Game::new(deck));
-        self.forward_button();
-        self.start_hands();
-        self.pay_blinds();
-        self.deal_cards();
-    }
-
-    fn forward_button(&mut self) {
-        let mut index = SeatIndex::new(self.button + 1, self.seats.len());
-        while self.seats[index.position].is_none() {
-            index = index.next();
-        }
-        self.button = index.position;
-        self.add_event(TableEventType::ButtonMoved { button_position: self.button as u8 });
-    }
-
-    fn start_hands(&mut self) {
-        for player in self.seats.iter_mut().flatten() {
-            player.start_hand();
-        }
-    }
-
-    fn pay_blinds(&mut self) {
-        self.pay_small_blind();
-        self.pay_big_blind();
-    }
-
-    fn deal_cards(&mut self) {
-        let player_count = self.player_count();
-        let mut card_count = 0;
-        let mut player_position = self.next_player_position(self.button as usize);
-        while card_count < player_count * 2 {
-            self.deal_card(player_position);
-            card_count += 1;
-            player_position = self.next_player_position(player_position);
-        }
-    }
-
-    fn deal_card(&mut self, position: usize) {
-        let game = self.game.as_mut().unwrap();
-        let card = game.deal_player_card();
-        let player = self.seats[position].as_mut().unwrap();
-        player.deal_card(card);
-        self.add_event(TableEventType::PlayerCardDealt { position: position as u8 });
-    }
-
-    fn pay_small_blind(&mut self) {
-        let button_distance = if self.player_count() > 2 { 1u8 } else { 0u8 };
-        let position = self.player_position(button_distance);
-        self.place_bet(position, 25);
-    }
-
-    fn pay_big_blind(&mut self) {
-        let button_distance = if self.player_count() > 2 { 2u8 } else { 1u8 };
-        let position = self.player_position(button_distance);
-        self.place_bet(position, 50);
-    }
-
-    fn place_bet(&mut self, position: usize, amount: u32) {
-        let player = self.seats[position].as_mut().unwrap();
-        let real_amount = player.place_bet(amount);
-        let event_type = TableEventType::BetPlaced {
-            position: player.position(),
-            amount: real_amount,
-            current_bet_sum: player.current_bet_sum().unwrap(),
-            remaining_stack: player.stack(),
-        };
-        self.add_event(event_type);
-    }
-
-    fn player_position(&self, button_distance: u8) -> usize {
-        let mut count = 0u8;
-        let mut index = SeatIndex::new(self.button as usize, self.seats.len());
-        while count != button_distance {
-            index = index.next();
-            if self.seats[index.position].is_some() {
-                count += 1;
-            }
-        }
-        index.position
-    }
-
-    fn next_player_position(&self, position: usize) -> usize {
-        let mut candidate = (position + 1) % self.seats.len();
-        while self.seats[candidate].is_none() {
-            candidate = (candidate + 1) % self.seats.len();
-        }
-        candidate
-    }
-
-    fn player_count(&self) -> u8 {
-        self.seats.iter().flatten().count() as u8
-    }
-
-    fn add_event(&mut self, event_type: TableEventType) {
-        self.events.push(
-            TableEvent { table_id: self.id, event_type }
-        );
+    pub fn seat_player(&mut self, player_info: PlayerInfo) {
+        let seat = self.seats.iter_mut().find(|seat| seat.is_free()).unwrap();
+        seat.take(player_info.clone());
+        self.events.push(TableEvent::PlayerSeated {
+            table_id: self.id,
+            seat_no: seat.seat_no(),
+            player_info
+        });
     }
 }
 
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TableEvent {
-    table_id: Uuid,
-    event_type: TableEventType,
-}
-
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TableEventType {
+#[derive(Debug, Clone)]
+pub enum TableEvent {
     TableOpened {
+        table_id: TableId,
         seat_count: u8,
-        button_position: u8,
     },
     PlayerSeated {
-        position: u8,
-        player_data: PlayerData,
+        table_id: TableId,
+        seat_no: SeatNo,
+        player_info: PlayerInfo,
     },
-    ButtonMoved {
-        button_position: u8,
-    },
-    BetPlaced {
-        position: u8,
-        amount: u32,
-        current_bet_sum: u32,
-        remaining_stack: u32,
-    },
-    PlayerCardDealt {
-        position: u8,
-    }
 }
 
 
 #[derive(Debug, Clone)]
-struct SeatIndex {
-    position: usize,
-    seat_count: usize,
+pub struct PlayerInfo {
+    player_id: PlayerId,
+    nickname: String,
+    stack: Chips,
 }
 
-impl SeatIndex {
-    pub fn new(position: usize, seat_count: usize) -> Self {
-        Self { position: position % seat_count, seat_count }
-    }
-
-    pub fn next(&self) -> Self {
-        let next_pos = (self.position + 1) % self.seat_count;
-        Self::new(next_pos, self.seat_count)
-    }
-}
 
 
 #[derive(Debug, Clone)]
-enum TableState {
-    Idle,
-    Playing(Game),
-    Paused,
+struct Seat {
+    seat_no: SeatNo,
+    player_info: Option<PlayerInfo>,
 }
 
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn new() {
-        let table_id = Uuid::new_v4();
-        let mut table = Table::new(table_id, 5);
-        assert_eq!(table.id(), table_id);
-        let events = table.consume_events();
-        assert_eq!(events, vec![
-            TableEvent {
-                table_id,
-                event_type: TableEventType::TableOpened {
-                    seat_count: 5,
-                    button_position: 4,
-                }
-            }
-        ]);
+impl Seat {
+    pub fn new(seat_no: SeatNo) -> Self {
+        Self { seat_no, player_info: None }
     }
 
-    #[test]
-    fn seat_player() {
-        let mut table = create_table(5);
-        let player_data = create_player_data("Daniel");
-        table.seat_player(player_data.clone());
-        assert_eq!(table.consume_events(), vec![
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerSeated { position: 0, player_data },
-            }
-        ]);
-
-        let player_data = create_player_data("Maria");
-        table.seat_player(player_data.clone());
-        assert_eq!(table.consume_events(), vec![
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerSeated { position: 1, player_data },
-            }
-        ]);
+    pub fn seat_no(&self) -> SeatNo {
+        self.seat_no
     }
 
-    #[test]
-    #[should_panic(expected = "deck not untouched")]
-    fn start_game_with_touched_deck() {
-        let player_datas = vec![
-            create_player_data("Daniel"),
-            create_player_data("Maria"),
-            create_player_data("Tillmann"),
-        ];
-        let mut table = create_table_with_seated_players(player_datas);
-        let mut deck = create_unshuffled_deck();
-        _ = deck.draw_card();
-        table.start_game(deck);
+    pub fn is_free(&self) -> bool {
+        self.player_info.is_none()
     }
 
-    #[test]
-    fn start_game_with_three_players() {
-        let player_datas = vec![
-            create_player_data("Daniel"),
-            create_player_data("Maria"),
-            create_player_data("Tillmann"),
-        ];
-        let mut table = create_table_with_seated_players(player_datas);
-
-        let deck = create_unshuffled_deck();
-        table.start_game(deck);
-
-        assert_eq!(table.consume_events(), vec![
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::ButtonMoved { button_position: 0 },
-            },
-            TableEvent { // small blind after button
-                table_id: table.id(),
-                event_type: TableEventType::BetPlaced {
-                    position: 1,
-                    amount: 25,
-                    current_bet_sum: 25,
-                    remaining_stack: 1475
-                },
-            },
-            TableEvent { // big blind after small blind
-                table_id: table.id(),
-                event_type: TableEventType::BetPlaced {
-                    position: 2,
-                    amount: 50,
-                    current_bet_sum: 50,
-                    remaining_stack: 1450
-                },
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 1 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 2 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 0 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 1 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 2 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 0 }
-            },
-        ]);
+    pub fn take(&mut self, player_info: PlayerInfo) {
+        assert!(self.is_free());
+        self.player_info = Some(player_info);
     }
-
-    #[test]
-    fn start_game_with_two_players() {
-        let player_datas = vec![
-            create_player_data("Daniel"),
-            create_player_data("Maria"),
-        ];
-        let mut table = create_table_with_seated_players(player_datas);
-
-        let deck = create_unshuffled_deck();
-        table.start_game(deck);
-
-        assert_eq!(table.consume_events(), vec![
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::ButtonMoved { button_position: 0 },
-            },
-            TableEvent { // small blind on button
-                table_id: table.id(),
-                event_type: TableEventType::BetPlaced {
-                    position: 0,
-                    amount: 25,
-                    current_bet_sum: 25,
-                    remaining_stack: 1475
-                },
-            },
-            TableEvent { // big blind after button
-                table_id: table.id(),
-                event_type: TableEventType::BetPlaced {
-                    position: 1,
-                    amount: 50,
-                    current_bet_sum: 50,
-                    remaining_stack: 1450
-                },
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 1 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 0 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 1 }
-            },
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerCardDealt { position: 0 }
-            },
-        ]);
-    }
-
-    fn create_table_with_seated_players(player_datas: Vec<PlayerData>) -> Table {
-        let mut table = create_table(5);
-        let expected_seated_events: Vec<TableEvent> = player_datas
-            .iter()
-            .enumerate()
-            .map(|(index, player_data)| TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::PlayerSeated {
-                    position: index as u8,
-                    player_data: player_data.clone(),
-                }
-            })
-            .collect();
-        for player_data in player_datas {
-            table.seat_player(player_data);
-        }
-        assert_eq!(table.consume_events(), expected_seated_events);
-        table
-    }
-
-    fn create_table(seat_count: u8) -> Table {
-        let mut table = Table::new(Uuid::new_v4(), seat_count);
-        assert_eq!(table.consume_events(), vec![
-            TableEvent {
-                table_id: table.id(),
-                event_type: TableEventType::TableOpened {
-                    seat_count,
-                    button_position: seat_count - 1,
-                }
-            }
-        ]);
-        table
-    }
-
-    fn create_player_data(nickname: &str) -> PlayerData {
-        PlayerData::new(Uuid::new_v4(), nickname.to_string(), 1500)
-    }
-
-
-    use crate::domain::card::Card;
-
-    // fn create_unshuffled_deck() -> Deck {
-    //     let cards = std::array::from_fn(|i| Card::new(i as u8));
-    //     let sequence = Card
-    //     Deck::new(cards)
-    // }
 }
