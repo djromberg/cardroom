@@ -14,8 +14,7 @@ pub struct Hand {
     dealer: Dealer,
     participants: Vec<Participant>,
     current_pos: usize,
-    street: Street,
-    is_started: bool,
+    stage: Stage,
 }
 
 impl Hand {
@@ -30,14 +29,13 @@ impl Hand {
                 .map(|p| Participant::new(&p))
                 .collect(),
             current_pos: if participants.len() == 2 { 0 } else { 1 },
-            street: Street::Preflop,
-            is_started: false,
+            stage: Stage::Ready,
         }
     }
 
     pub fn start(&mut self) -> Vec<HandEvent> {
-        assert!(!self.is_started);
-        self.is_started = true;
+        assert_eq!(self.stage, Stage::Ready);
+        self.stage = self.stage.next();
         let mut events = vec![];
         events.extend(self.pay_blinds());
         events.push(self.deal_hole_cards());
@@ -87,25 +85,52 @@ impl Hand {
 
     fn run(&mut self) -> Vec<HandEvent> {
         let mut events = vec![];
-        if self.is_any_participant_active() {
-            events.extend(self.run_current_round());
+        if self.is_only_one_participant_left() {
+            events.extend(self.end_early());
+        } else if self.is_participant_action_required() {
+            events.push(self.request_action_from_next_active_participant());
         } else {
-            events.extend(self.run_until_complete());
+            events.extend(self.run_until_finished());
         }
         events
     }
 
-    fn run_until_complete(&mut self) -> Vec<HandEvent> {
+    fn run_until_finished(&mut self) -> Vec<HandEvent> {
         let mut events = vec![];
-        while !self.is_finished() {
-            events.extend(self.finish_street_if_possible());
+        while self.is_round_in_progress() {
+            events.extend(self.finish_round());
         }
-        events.extend(self.showdown());
         events
     }
 
-    fn is_finished(&mut self) -> bool {
-        false
+    fn finish_round(&mut self) -> Vec<HandEvent> {
+        let mut events = vec![];
+        // events.extend(self.collect_bets());
+        self.stage = self.stage.next();
+        if self.is_round_in_progress() {
+            self.current_pos = 0;
+        } else {
+            events.extend(self.showdown());
+            // events.extend(self.payout());
+        }
+        events
+    }
+
+    fn is_round_in_progress(&self) -> bool {
+        matches!(self.stage, Stage::Street(_))
+    }
+
+    fn is_participant_action_required(&self) -> bool {
+        true
+        // self.action_count_and_bet_of_active_players_match
+    }
+
+    fn is_only_one_participant_left(&mut self) -> bool {
+        self.participants.iter().filter(|p| p.has_folded()).count() == 1
+    }
+
+    fn are_at_least_two_participants_active(&self) -> bool {
+        self.participants.iter().filter(|p| p.can_act()).count() >= 2
     }
 
     fn is_heads_up(&self) -> bool {
@@ -116,14 +141,11 @@ impl Hand {
         true
     }
 
-    fn finish_street_if_possible(&mut self) -> Vec<HandEvent> {
-        vec![]
-    }
-
-    fn run_current_round(&mut self) -> Vec<HandEvent> {
+    fn end_early(&mut self) -> Vec<HandEvent> {
         let mut events = vec![];
-        events.extend(self.finish_street_if_possible());
-        events.push(self.request_action_from_next_active_participant());
+        // events.extend(self.collect_bets());
+        // events.extend(self.payout());
+        self.stage = Stage::Over;
         events
     }
 
@@ -132,9 +154,24 @@ impl Hand {
     }
 
     fn request_action_from_next_active_participant(&mut self) -> HandEvent {
-        self.advance_pos();
-        // TODO find next active player
-        HandEvent::ActionRequested { seat_no: SeatNo(0) }
+        while !self.current_participant().can_act() {
+            self.advance_pos();
+        }
+
+        // temp workaround just for testing
+        let round_state = RoundState {
+            max_bet: self.blinds.big,
+            min_raise: self.blinds.big,
+        };
+        self.current_participant_mut().request_action(round_state)
+    }
+
+    fn current_participant(&self) -> &Participant {
+        &self.participants[self.current_pos]
+    }
+
+    fn current_participant_mut(&mut self) -> &mut Participant {
+        &mut self.participants[self.current_pos]
     }
 
     fn advance_pos(&mut self) {
@@ -156,6 +193,8 @@ pub enum HandEvent {
     },
     ActionRequested {
         seat_no: SeatNo,
+        min_bet: Chips,
+        min_raise: Chips,
     },
 }
 
@@ -167,13 +206,56 @@ pub struct ParticipantInfo {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Street {
     Preflop,
     Flop,
     Turn,
     River,
 }
+
+impl Street {
+    pub fn next(&self) -> Option<Street> {
+        match self {
+            Self::Preflop => Some(Self::Flop),
+            Self::Flop => Some(Self::Turn),
+            Self::Turn => Some(Self::River),
+            Self::River => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum Stage {
+    Ready,
+    Street(Street),
+    Over,
+}
+
+impl Stage {
+    pub fn next(&self) -> Stage {
+        match self {
+            Self::Ready => Self::Street(Street::Preflop),
+            Self::Street(street) => street.next().map_or(Self::Over, |next| Self::Street(next)),
+            Self::Over => panic!(),
+        }
+    }
+}
+
+
+#[derive(Debug, Clone)]
+struct RoundState {
+    max_bet: Chips,
+    min_raise: Chips,
+}
+
+
+#[derive(Debug, Clone, PartialEq)]
+struct ActionRequest {
+    min_bet: Chips,
+    min_raise: Chips,
+}
+
 
 #[derive(Debug, Clone)]
 struct Participant {
@@ -182,8 +264,10 @@ struct Participant {
     current_bet: Chips,
     has_folded: bool,
     cards: Vec<Card>,
+    action_request: Option<ActionRequest>,
     action_count: u16,
 }
+
 
 impl Participant {
     pub fn new(info: &ParticipantInfo) -> Self {
@@ -193,12 +277,35 @@ impl Participant {
             current_bet: Chips(0),
             has_folded: false,
             cards: vec![],
+            action_request: None,
             action_count: 0,
         }
     }
 
     pub fn seat_no(&self) -> SeatNo {
         self.seat_no
+    }
+
+    pub fn has_folded(&self) -> bool {
+        self.has_folded
+    }
+
+    pub fn can_act(&self) -> bool {
+        !self.has_folded && self.stack > Chips(0)
+    }
+
+    pub fn request_action(&mut self, round_state: RoundState) -> HandEvent {
+        assert!(self.action_request.is_none());
+        let min_bet = min(round_state.max_bet - self.current_bet, self.stack);
+        let min_raise = round_state.min_raise;
+        self.action_request = Some(
+            ActionRequest { min_bet, min_raise }
+        );
+        HandEvent::ActionRequested {
+            seat_no: self.seat_no,
+            min_bet,
+            min_raise,
+        }
     }
 
     pub fn deal_card(&mut self, card: Card) {
@@ -223,7 +330,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn start() {
+    fn start_regular() {
         let mut hand = create_hand(
             3,
             Chips(1000),
@@ -238,7 +345,28 @@ mod tests {
                 HandEvent::ChipsPlaced { seat_no: SeatNo(1), amount: Chips(50), current_bet: Chips(50), remaining_stack: Chips(950) },
                 HandEvent::ChipsPlaced { seat_no: SeatNo(2), amount: Chips(100), current_bet: Chips(100), remaining_stack: Chips(900) },
                 HandEvent::HoleCardsDealt { seat_nos: vec![SeatNo(1), SeatNo(2), SeatNo(0)] },
-                HandEvent::ActionRequested { seat_no: SeatNo(0) }
+                HandEvent::ActionRequested { seat_no: SeatNo(0), min_bet: Chips(100), min_raise: Chips(100) }
+            ]
+        );
+    }
+
+    #[test]
+    fn start_heads_up() {
+        let mut hand = create_hand(
+            2,
+            Chips(1000),
+            Blinds {
+                small: Chips(50),
+                big: Chips(100),
+            });
+
+        assert_eq!(
+            hand.start(),
+            vec![
+                HandEvent::ChipsPlaced { seat_no: SeatNo(0), amount: Chips(50), current_bet: Chips(50), remaining_stack: Chips(950) },
+                HandEvent::ChipsPlaced { seat_no: SeatNo(1), amount: Chips(100), current_bet: Chips(100), remaining_stack: Chips(900) },
+                HandEvent::HoleCardsDealt { seat_nos: vec![SeatNo(1), SeatNo(0)] },
+                HandEvent::ActionRequested { seat_no: SeatNo(0), min_bet: Chips(50), min_raise: Chips(100) }
             ]
         );
     }
