@@ -621,4 +621,66 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn pocket_kings_crack_pocket_aces_after_both_players_are_all_in_preflop() {
+        // Heads-up cards are dealt to seat 1 first. The first four cards therefore
+        // give kings to seat 1 and aces to seat 0. Card 37 puts a third king on
+        // the flop; the mixed-suit board cannot improve the aces past three kings.
+        // Positions 4, 8, and 10 are burn cards.
+        let prefix = [11, 12, 24, 25, 0, 37, 14, 28, 1, 43, 2, 19];
+        let mut card_values = prefix.to_vec();
+        card_values.extend((0..52).filter(|value| !prefix.contains(value)));
+        let deck = Deck::new(std::array::from_fn(|index| Card::new(card_values[index])));
+        let mut hand = Hand::new(
+            deck,
+            Blinds {
+                small: Chips(50),
+                big: Chips(100),
+            },
+            vec![
+                ParticipantInfo {
+                    seat_no: SeatNo(0),
+                    stack: Chips(1000),
+                },
+                ParticipantInfo {
+                    seat_no: SeatNo(1),
+                    stack: Chips(1000),
+                },
+            ],
+        );
+
+        hand.start();
+        assert_eq!(
+            hand.participants[0].cards,
+            vec![Card::new(12), Card::new(25)]
+        );
+        assert_eq!(
+            hand.participants[1].cards,
+            vec![Card::new(11), Card::new(24)]
+        );
+
+        hand.act(SeatNo(0), Action::RaiseTo(Chips(1000))).unwrap();
+        let events = hand.act(SeatNo(1), Action::Call).unwrap();
+
+        assert!(events.contains(&HandEvent::CommunityCardsDealt {
+            street: Street::Flop,
+            cards: vec![Card::new(37), Card::new(14), Card::new(28)],
+        }));
+        assert!(events.contains(&HandEvent::Showdown {
+            seat_nos: vec![SeatNo(0), SeatNo(1)],
+        }));
+        assert!(
+            events.contains(&HandEvent::ChipsAwarded {
+                seat_no: SeatNo(1),
+                amount: Chips(2000),
+            }),
+            "unexpected settlement events: {events:?}"
+        );
+        assert_eq!(events.last(), Some(&HandEvent::HandFinished));
+        assert_eq!(
+            hand.stacks(),
+            vec![(SeatNo(0), Chips(0)), (SeatNo(1), Chips(2000))]
+        );
+    }
 }
