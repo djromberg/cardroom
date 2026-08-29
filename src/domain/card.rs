@@ -1,6 +1,5 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Card(u8);
-
 
 impl Card {
     pub fn new(value: u8) -> Self {
@@ -12,7 +11,6 @@ impl Card {
         self.0 as usize
     }
 }
-
 
 #[cfg(test)]
 mod tests {
