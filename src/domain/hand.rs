@@ -544,4 +544,81 @@ mod tests {
             amount: Chips(150)
         }));
     }
+
+    #[test]
+    fn five_handed_hand_with_two_flop_folds_reaches_three_way_showdown() {
+        let mut hand = hand(5);
+        let mut events = hand.start();
+
+        // Preflop: UTG calls, the cutoff raises, and all five players see the flop.
+        for (seat_no, action) in [
+            (3, Action::Call),
+            (4, Action::RaiseTo(Chips(200))),
+            (0, Action::Call),
+            (1, Action::Call),
+            (2, Action::Call),
+            (3, Action::Call),
+        ] {
+            events.extend(hand.act(SeatNo(seat_no), action).unwrap());
+        }
+        assert!(events.contains(&HandEvent::CommunityCardsDealt {
+            street: Street::Flop,
+            cards: vec![Card::new(11), Card::new(12), Card::new(13)],
+        }));
+
+        // The big blind leads, one player folds, the button raises, and a second
+        // player folds. Seats 0, 2, and 3 continue to the turn.
+        for (seat_no, action) in [
+            (1, Action::Check),
+            (2, Action::Bet(Chips(100))),
+            (3, Action::Call),
+            (4, Action::Fold),
+            (0, Action::RaiseTo(Chips(300))),
+            (1, Action::Fold),
+            (2, Action::Call),
+            (3, Action::Call),
+        ] {
+            events.extend(hand.act(SeatNo(seat_no), action).unwrap());
+        }
+        assert!(events.contains(&HandEvent::CommunityCardsDealt {
+            street: Street::Turn,
+            cards: vec![Card::new(15)],
+        }));
+
+        // The remaining three players check the turn and river to showdown.
+        for seat_no in [2, 3, 0, 2, 3, 0] {
+            events.extend(hand.act(SeatNo(seat_no), Action::Check).unwrap());
+        }
+
+        assert!(events.contains(&HandEvent::CommunityCardsDealt {
+            street: Street::River,
+            cards: vec![Card::new(17)],
+        }));
+        assert!(events.contains(&HandEvent::Showdown {
+            seat_nos: vec![SeatNo(0), SeatNo(2), SeatNo(3)],
+        }));
+        let seat_zero_winnings = events
+            .iter()
+            .filter_map(|event| match event {
+                HandEvent::ChipsAwarded {
+                    seat_no: SeatNo(0),
+                    amount,
+                } => Some(amount.0),
+                _ => None,
+            })
+            .sum::<u64>();
+        assert_eq!(seat_zero_winnings, 1900);
+        assert_eq!(events.last(), Some(&HandEvent::HandFinished));
+        assert!(hand.is_finished());
+        assert_eq!(
+            hand.stacks(),
+            vec![
+                (SeatNo(0), Chips(2400)),
+                (SeatNo(1), Chips(800)),
+                (SeatNo(2), Chips(500)),
+                (SeatNo(3), Chips(500)),
+                (SeatNo(4), Chips(800)),
+            ]
+        );
+    }
 }
