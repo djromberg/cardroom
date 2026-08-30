@@ -1,36 +1,38 @@
-use super::player::Player;
-use super::player::PlayerData;
-
+use super::shared::SeatNo;
+use super::table::PlayerInfo;
 
 #[derive(Debug, Clone)]
 pub struct Seat {
-    position: u8,
-    player: Option<Player>,
+    seat_no: SeatNo,
+    player_info: Option<PlayerInfo>,
 }
 
 impl Seat {
-    pub fn new(position: u8) -> Self {
-        Self { position, player: None }
+    pub fn new(seat_no: SeatNo) -> Self {
+        Self {
+            seat_no,
+            player_info: None,
+        }
     }
 
-    pub fn position(&self) -> u8 {
-        self.position
+    pub fn seat_no(&self) -> SeatNo {
+        self.seat_no
     }
 
-    pub fn is_available(&self) -> bool {
-        self.player.is_none()
+    pub fn player_info(&self) -> Option<&PlayerInfo> {
+        self.player_info.as_ref()
     }
 
-    pub fn is_taken(&self) -> bool {
-        self.player.is_some()
+    pub fn player_info_mut(&mut self) -> Option<&mut PlayerInfo> {
+        self.player_info.as_mut()
     }
 
-    pub fn take(&mut self, data: PlayerData) {
-        let player = Player::new(self.position, data);
-        self.player = Some(player);
+    pub fn is_free(&self) -> bool {
+        self.player_info.is_none()
     }
 
-    pub fn player(&mut self) -> &mut Player {
-        self.player.as_mut().unwrap()
+    pub fn take(&mut self, player_info: PlayerInfo) {
+        assert!(self.is_free());
+        self.player_info = Some(player_info);
     }
 }

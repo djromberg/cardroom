@@ -1,5 +1,6 @@
 use super::deck::Deck;
 use super::hand::{Action, Hand, HandError, HandEvent, ParticipantInfo};
+use super::seat::Seat;
 use super::shared::Blinds;
 use super::shared::Chips;
 use super::shared::PlayerId;
@@ -57,8 +58,7 @@ impl Table {
             .seats
             .iter()
             .filter(|seat| {
-                seat.player_info
-                    .as_ref()
+                seat.player_info()
                     .is_some_and(|player| player.stack > Chips(0))
             })
             .collect();
@@ -67,19 +67,17 @@ impl Table {
         }
 
         let first = match self.dealer_seat {
-            None => occupied[0].seat_no,
-            Some(previous) => {
-                occupied
-                    .iter()
-                    .find(|seat| seat.seat_no.0 > previous.0)
-                    .unwrap_or(&occupied[0])
-                    .seat_no
-            }
+            None => occupied[0].seat_no(),
+            Some(previous) => occupied
+                .iter()
+                .find(|seat| seat.seat_no().0 > previous.0)
+                .unwrap_or(&occupied[0])
+                .seat_no(),
         };
         self.dealer_seat = Some(first);
         let dealer_index = occupied
             .iter()
-            .position(|seat| seat.seat_no == first)
+            .position(|seat| seat.seat_no() == first)
             .unwrap();
         let participants = occupied
             .iter()
@@ -87,9 +85,9 @@ impl Table {
             .skip(dealer_index)
             .take(occupied.len())
             .map(|seat| {
-                let player = seat.player_info.as_ref().unwrap();
+                let player = seat.player_info().unwrap();
                 ParticipantInfo {
-                    seat_no: seat.seat_no,
+                    seat_no: seat.seat_no(),
                     stack: player.stack,
                 }
             })
@@ -99,8 +97,7 @@ impl Table {
         if hand.is_finished() {
             for (seat_no, stack) in hand.stacks() {
                 self.seats[seat_no.0 as usize]
-                    .player_info
-                    .as_mut()
+                    .player_info_mut()
                     .unwrap()
                     .stack = stack;
             }
@@ -124,8 +121,7 @@ impl Table {
         if hand.is_finished() {
             for (seat_no, stack) in hand.stacks() {
                 self.seats[seat_no.0 as usize]
-                    .player_info
-                    .as_mut()
+                    .player_info_mut()
                     .unwrap()
                     .stack = stack;
             }
@@ -207,34 +203,6 @@ impl From<HandError> for TableError {
     }
 }
 
-#[derive(Debug, Clone)]
-struct Seat {
-    seat_no: SeatNo,
-    player_info: Option<PlayerInfo>,
-}
-
-impl Seat {
-    pub fn new(seat_no: SeatNo) -> Self {
-        Self {
-            seat_no,
-            player_info: None,
-        }
-    }
-
-    pub fn seat_no(&self) -> SeatNo {
-        self.seat_no
-    }
-
-    pub fn is_free(&self) -> bool {
-        self.player_info.is_none()
-    }
-
-    pub fn take(&mut self, player_info: PlayerInfo) {
-        assert!(self.is_free());
-        self.player_info = Some(player_info);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::card::Card;
@@ -267,14 +235,8 @@ mod tests {
         ));
 
         table.act(SeatNo(0), Action::Fold).unwrap();
-        assert_eq!(
-            table.seats[0].player_info.as_ref().unwrap().stack,
-            Chips(950)
-        );
-        assert_eq!(
-            table.seats[1].player_info.as_ref().unwrap().stack,
-            Chips(1050)
-        );
+        assert_eq!(table.seats[0].player_info().unwrap().stack, Chips(950));
+        assert_eq!(table.seats[1].player_info().unwrap().stack, Chips(1050));
     }
 
     #[test]
