@@ -546,6 +546,85 @@ mod tests {
     }
 
     #[test]
+    fn start_finishes_hand_when_both_participants_are_all_in_from_blinds() {
+        let mut hand = Hand::new(
+            Deck::new(std::array::from_fn(|index| Card::new(index as u8))),
+            Blinds {
+                small: Chips(50),
+                big: Chips(100),
+            },
+            vec![
+                ParticipantInfo {
+                    seat_no: SeatNo(0),
+                    stack: Chips(50),
+                },
+                ParticipantInfo {
+                    seat_no: SeatNo(1),
+                    stack: Chips(50),
+                },
+            ],
+        );
+
+        let events = hand.start();
+
+        assert_eq!(
+            &events[..3],
+            &[
+                HandEvent::ChipsPlaced {
+                    seat_no: SeatNo(0),
+                    amount: Chips(50),
+                    current_bet: Chips(50),
+                    remaining_stack: Chips(0),
+                },
+                HandEvent::ChipsPlaced {
+                    seat_no: SeatNo(1),
+                    amount: Chips(50),
+                    current_bet: Chips(50),
+                    remaining_stack: Chips(0),
+                },
+                HandEvent::HoleCardsDealt {
+                    seat_nos: vec![SeatNo(1), SeatNo(0)],
+                },
+            ]
+        );
+        assert!(events.iter().any(|event| matches!(
+            event,
+            HandEvent::CommunityCardsDealt {
+                street: Street::Flop,
+                ..
+            }
+        )));
+        assert!(events.iter().any(|event| matches!(
+            event,
+            HandEvent::CommunityCardsDealt {
+                street: Street::Turn,
+                ..
+            }
+        )));
+        assert!(events.iter().any(|event| matches!(
+            event,
+            HandEvent::CommunityCardsDealt {
+                street: Street::River,
+                ..
+            }
+        )));
+        assert!(events.contains(&HandEvent::Showdown {
+            seat_nos: vec![SeatNo(0), SeatNo(1)],
+        }));
+        assert!(
+            !events
+                .iter()
+                .any(|event| matches!(event, HandEvent::ActionRequested { .. }))
+        );
+        assert_eq!(events.last(), Some(&HandEvent::HandFinished));
+        assert!(hand.is_finished());
+        assert_eq!(
+            hand.stacks().iter().map(|(_, stack)| stack.0).sum::<u64>(),
+            100
+        );
+    }
+
+    #[test]
     fn five_handed_hand_with_two_flop_folds_reaches_three_way_showdown() {
         let mut hand = hand(5);
         let mut events = hand.start();
