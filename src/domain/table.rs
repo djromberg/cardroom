@@ -51,7 +51,7 @@ impl Table {
         deck: Deck,
         blinds: Blinds,
     ) -> Result<Vec<TableEvent>, TableError> {
-        if self.hand.as_ref().is_some_and(|hand| !hand.is_finished()) {
+        if self.hand.is_some() {
             return Err(TableError::HandInProgress);
         }
         let occupied: Vec<_> = self
@@ -59,50 +59,43 @@ impl Table {
             .iter()
             .filter(|seat| {
                 seat.player_info()
-                    .is_some_and(|player| player.stack > Chips(0))
+                    .and_then(PlayerInfo::stack)
+                    .is_some_and(|stack| stack > Chips(0))
             })
+            .map(Seat::seat_no)
             .collect();
         if occupied.len() < 2 {
             return Err(TableError::NotEnoughPlayers);
         }
 
         let first = match self.dealer_seat {
-            None => occupied[0].seat_no(),
+            None => occupied[0],
             Some(previous) => occupied
                 .iter()
-                .find(|seat| seat.seat_no().0 > previous.0)
+                .find(|seat_no| seat_no.0 > previous.0)
                 .unwrap_or(&occupied[0])
-                .seat_no(),
+                .to_owned(),
         };
         self.dealer_seat = Some(first);
         let dealer_index = occupied
             .iter()
-            .position(|seat| seat.seat_no() == first)
+            .position(|seat_no| *seat_no == first)
             .unwrap();
         let participants = occupied
             .iter()
             .cycle()
             .skip(dealer_index)
             .take(occupied.len())
-            .map(|seat| {
-                let player = seat.player_info().unwrap();
-                ParticipantInfo {
-                    seat_no: seat.seat_no(),
-                    stack: player.stack,
-                }
+            .map(|seat_no| {
+                let seat_no = *seat_no;
+                let stack = self.seats[seat_no.0 as usize].take_stack();
+                ParticipantInfo { seat_no, stack }
             })
             .collect();
         let mut hand = Hand::new(deck, blinds, participants);
         let hand_events = hand.start();
-        if hand.is_finished() {
-            for (seat_no, stack) in hand.stacks() {
-                self.seats[seat_no.0 as usize]
-                    .player_info_mut()
-                    .unwrap()
-                    .stack = stack;
-            }
-        }
         self.hand = Some(hand);
+        self.settle_finished_hand();
         let mut events = vec![TableEvent::HandStarted {
             table_id: self.id,
             dealer_seat: first,
@@ -118,14 +111,7 @@ impl Table {
     pub fn act(&mut self, seat_no: SeatNo, action: Action) -> Result<Vec<TableEvent>, TableError> {
         let hand = self.hand.as_mut().ok_or(TableError::NoHand)?;
         let hand_events = hand.act(seat_no, action)?;
-        if hand.is_finished() {
-            for (seat_no, stack) in hand.stacks() {
-                self.seats[seat_no.0 as usize]
-                    .player_info_mut()
-                    .unwrap()
-                    .stack = stack;
-            }
-        }
+        self.settle_finished_hand();
         let events: Vec<_> = hand_events
             .into_iter()
             .map(|event| TableEvent::HandEvent {
@@ -135,6 +121,16 @@ impl Table {
             .collect();
         self.events.extend(events.iter().cloned());
         Ok(events)
+    }
+
+    fn settle_finished_hand(&mut self) {
+        if !self.hand.as_ref().is_some_and(Hand::is_finished) {
+            return;
+        }
+        let result = self.hand.take().unwrap().into_result();
+        for (seat_no, stack) in result.into_stacks() {
+            self.seats[seat_no.0 as usize].return_stack(stack);
+        }
     }
 
     pub fn collect_events(&mut self) -> Vec<TableEvent> {
@@ -167,7 +163,13 @@ pub enum TableEvent {
 pub struct PlayerInfo {
     player_id: PlayerId,
     nickname: String,
-    stack: Chips,
+    stack: StackLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum StackLocation {
+    AtTable(Chips),
+    InHand,
 }
 
 impl PlayerInfo {
@@ -175,7 +177,7 @@ impl PlayerInfo {
         Self {
             player_id,
             nickname,
-            stack,
+            stack: StackLocation::AtTable(stack),
         }
     }
     pub fn player_id(&self) -> PlayerId {
@@ -184,8 +186,24 @@ impl PlayerInfo {
     pub fn nickname(&self) -> &str {
         &self.nickname
     }
-    pub fn stack(&self) -> Chips {
-        self.stack
+    pub fn stack(&self) -> Option<Chips> {
+        match self.stack {
+            StackLocation::AtTable(stack) => Some(stack),
+            StackLocation::InHand => None,
+        }
+    }
+
+    pub fn take_stack(&mut self) -> Chips {
+        let previous = std::mem::replace(&mut self.stack, StackLocation::InHand);
+        match previous {
+            StackLocation::AtTable(stack) => stack,
+            StackLocation::InHand => panic!("player's stack is already in a hand"),
+        }
+    }
+
+    pub fn return_stack(&mut self, stack: Chips) {
+        assert_eq!(self.stack, StackLocation::InHand);
+        self.stack = StackLocation::AtTable(stack);
     }
 }
 
@@ -233,10 +251,19 @@ mod tests {
                 ..
             })
         ));
+        assert_eq!(table.seats[0].player_info().unwrap().stack(), None);
+        assert_eq!(table.seats[1].player_info().unwrap().stack(), None);
 
         table.act(SeatNo(0), Action::Fold).unwrap();
-        assert_eq!(table.seats[0].player_info().unwrap().stack, Chips(950));
-        assert_eq!(table.seats[1].player_info().unwrap().stack, Chips(1050));
+        assert!(table.hand.is_none());
+        assert_eq!(
+            table.seats[0].player_info().unwrap().stack(),
+            Some(Chips(950))
+        );
+        assert_eq!(
+            table.seats[1].player_info().unwrap().stack(),
+            Some(Chips(1050))
+        );
     }
 
     #[test]

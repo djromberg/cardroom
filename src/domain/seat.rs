@@ -23,10 +23,6 @@ impl Seat {
         self.player_info.as_ref()
     }
 
-    pub fn player_info_mut(&mut self) -> Option<&mut PlayerInfo> {
-        self.player_info.as_mut()
-    }
-
     pub fn is_free(&self) -> bool {
         self.player_info.is_none()
     }
@@ -34,5 +30,19 @@ impl Seat {
     pub fn take(&mut self, player_info: PlayerInfo) {
         assert!(self.is_free());
         self.player_info = Some(player_info);
+    }
+
+    pub fn take_stack(&mut self) -> super::shared::Chips {
+        self.player_info
+            .as_mut()
+            .expect("cannot take a stack from a free seat")
+            .take_stack()
+    }
+
+    pub fn return_stack(&mut self, stack: super::shared::Chips) {
+        self.player_info
+            .as_mut()
+            .expect("cannot return a stack to a free seat")
+            .return_stack(stack);
     }
 }

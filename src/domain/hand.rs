@@ -130,6 +130,17 @@ impl Hand {
             .collect()
     }
 
+    pub fn into_result(self) -> HandResult {
+        assert!(self.finished, "cannot settle an unfinished hand");
+        HandResult {
+            stacks: self
+                .participants
+                .into_iter()
+                .map(|participant| (participant.seat_no, participant.stack))
+                .collect(),
+        }
+    }
+
     fn raise_to(
         &mut self,
         position: usize,
@@ -420,6 +431,17 @@ impl Street {
 pub struct ParticipantInfo {
     pub seat_no: SeatNo,
     pub stack: Chips,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HandResult {
+    stacks: Vec<(SeatNo, Chips)>,
+}
+
+impl HandResult {
+    pub fn into_stacks(self) -> Vec<(SeatNo, Chips)> {
+        self.stacks
+    }
 }
 
 #[derive(Debug, Clone)]
