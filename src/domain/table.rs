@@ -1,9 +1,9 @@
 use super::deck::Deck;
 use super::hand::{Action, Hand, HandError, HandEvent, ParticipantInfo};
+use super::player::PlayerInfo;
 use super::seat::Seat;
 use super::shared::Blinds;
 use super::shared::Chips;
-use super::shared::PlayerId;
 use super::shared::SeatNo;
 use super::shared::TableId;
 
@@ -160,54 +160,6 @@ pub enum TableEvent {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlayerInfo {
-    player_id: PlayerId,
-    nickname: String,
-    stack: StackLocation,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum StackLocation {
-    AtTable(Chips),
-    InHand,
-}
-
-impl PlayerInfo {
-    pub fn new(player_id: PlayerId, nickname: String, stack: Chips) -> Self {
-        Self {
-            player_id,
-            nickname,
-            stack: StackLocation::AtTable(stack),
-        }
-    }
-    pub fn player_id(&self) -> PlayerId {
-        self.player_id
-    }
-    pub fn nickname(&self) -> &str {
-        &self.nickname
-    }
-    pub fn stack(&self) -> Option<Chips> {
-        match self.stack {
-            StackLocation::AtTable(stack) => Some(stack),
-            StackLocation::InHand => None,
-        }
-    }
-
-    pub fn take_stack(&mut self) -> Chips {
-        let previous = std::mem::replace(&mut self.stack, StackLocation::InHand);
-        match previous {
-            StackLocation::AtTable(stack) => stack,
-            StackLocation::InHand => panic!("player's stack is already in a hand"),
-        }
-    }
-
-    pub fn return_stack(&mut self, stack: Chips) {
-        assert_eq!(self.stack, StackLocation::InHand);
-        self.stack = StackLocation::AtTable(stack);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TableError {
     HandInProgress,
     NotEnoughPlayers,
@@ -224,6 +176,7 @@ impl From<HandError> for TableError {
 #[cfg(test)]
 mod tests {
     use super::super::card::Card;
+    use super::super::shared::PlayerId;
     use super::*;
 
     fn deck() -> Deck {

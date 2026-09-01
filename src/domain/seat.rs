@@ -1,5 +1,5 @@
+use super::player::PlayerInfo;
 use super::shared::SeatNo;
-use super::table::PlayerInfo;
 
 #[derive(Debug, Clone)]
 pub struct Seat {
