@@ -1,6 +1,6 @@
 use super::deck::Deck;
 use super::hand::{Action, Hand, HandError, HandEvent, ParticipantInfo};
-use super::player::PlayerInfo;
+use super::player::{Player, PlayerInfo};
 use super::seat::Seat;
 use super::shared::Blinds;
 use super::shared::Chips;
@@ -58,8 +58,8 @@ impl Table {
             .seats
             .iter()
             .filter(|seat| {
-                seat.player_info()
-                    .and_then(PlayerInfo::stack)
+                seat.player()
+                    .and_then(Player::stack)
                     .is_some_and(|stack| stack > Chips(0))
             })
             .map(Seat::seat_no)
@@ -86,11 +86,7 @@ impl Table {
             .cycle()
             .skip(dealer_index)
             .take(occupied.len())
-            .map(|seat_no| {
-                let seat_no = *seat_no;
-                let stack = self.seats[seat_no.0 as usize].take_stack();
-                ParticipantInfo { seat_no, stack }
-            })
+            .filter_map(|seat_no| self.seats[seat_no.0 as usize].participate_in_hand())
             .collect();
         let mut hand = Hand::new(deck, blinds, participants);
         let hand_events = hand.start();
@@ -129,7 +125,7 @@ impl Table {
         }
         let result = self.hand.take().unwrap().into_result();
         for (seat_no, stack) in result.into_stacks() {
-            self.seats[seat_no.0 as usize].return_stack(stack);
+            self.seats[seat_no.0 as usize].return_from_hand(ParticipantInfo { seat_no, stack });
         }
     }
 
@@ -204,19 +200,13 @@ mod tests {
                 ..
             })
         ));
-        assert_eq!(table.seats[0].player_info().unwrap().stack(), None);
-        assert_eq!(table.seats[1].player_info().unwrap().stack(), None);
+        assert_eq!(table.seats[0].player().unwrap().stack(), None);
+        assert_eq!(table.seats[1].player().unwrap().stack(), None);
 
         table.act(SeatNo(0), Action::Fold).unwrap();
         assert!(table.hand.is_none());
-        assert_eq!(
-            table.seats[0].player_info().unwrap().stack(),
-            Some(Chips(950))
-        );
-        assert_eq!(
-            table.seats[1].player_info().unwrap().stack(),
-            Some(Chips(1050))
-        );
+        assert_eq!(table.seats[0].player().unwrap().stack(), Some(Chips(950)));
+        assert_eq!(table.seats[1].player().unwrap().stack(), Some(Chips(1050)));
     }
 
     #[test]

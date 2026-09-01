@@ -1,10 +1,17 @@
 use super::shared::{Chips, PlayerId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PlayerInfo {
+pub struct Player {
     player_id: PlayerId,
     nickname: String,
     stack: StackLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerInfo {
+    player_id: PlayerId,
+    nickname: String,
+    stack: Chips,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,12 +20,12 @@ enum StackLocation {
     InHand,
 }
 
-impl PlayerInfo {
-    pub fn new(player_id: PlayerId, nickname: String, stack: Chips) -> Self {
+impl Player {
+    pub fn new(info: PlayerInfo) -> Self {
         Self {
-            player_id,
-            nickname,
-            stack: StackLocation::AtTable(stack),
+            player_id: info.player_id,
+            nickname: info.nickname,
+            stack: StackLocation::AtTable(info.stack),
         }
     }
 
@@ -48,5 +55,27 @@ impl PlayerInfo {
     pub fn return_stack(&mut self, stack: Chips) {
         assert_eq!(self.stack, StackLocation::InHand);
         self.stack = StackLocation::AtTable(stack);
+    }
+}
+
+impl PlayerInfo {
+    pub fn new(player_id: PlayerId, nickname: String, stack: Chips) -> Self {
+        Self {
+            player_id,
+            nickname,
+            stack,
+        }
+    }
+
+    pub fn player_id(&self) -> PlayerId {
+        self.player_id
+    }
+
+    pub fn nickname(&self) -> &str {
+        &self.nickname
+    }
+
+    pub fn stack(&self) -> Chips {
+        self.stack
     }
 }

@@ -1,17 +1,18 @@
-use super::player::PlayerInfo;
+use super::hand::ParticipantInfo;
+use super::player::{Player, PlayerInfo};
 use super::shared::SeatNo;
 
 #[derive(Debug, Clone)]
 pub struct Seat {
     seat_no: SeatNo,
-    player_info: Option<PlayerInfo>,
+    player: Option<Player>,
 }
 
 impl Seat {
     pub fn new(seat_no: SeatNo) -> Self {
         Self {
             seat_no,
-            player_info: None,
+            player: None,
         }
     }
 
@@ -19,30 +20,31 @@ impl Seat {
         self.seat_no
     }
 
-    pub fn player_info(&self) -> Option<&PlayerInfo> {
-        self.player_info.as_ref()
+    pub fn player(&self) -> Option<&Player> {
+        self.player.as_ref()
     }
 
     pub fn is_free(&self) -> bool {
-        self.player_info.is_none()
+        self.player.is_none()
     }
 
     pub fn take(&mut self, player_info: PlayerInfo) {
         assert!(self.is_free());
-        self.player_info = Some(player_info);
+        self.player = Some(Player::new(player_info));
     }
 
-    pub fn take_stack(&mut self) -> super::shared::Chips {
-        self.player_info
-            .as_mut()
-            .expect("cannot take a stack from a free seat")
-            .take_stack()
+    pub fn participate_in_hand(&mut self) -> Option<ParticipantInfo> {
+        self.player.as_mut().map(|player| ParticipantInfo {
+            seat_no: self.seat_no,
+            stack: player.take_stack(),
+        })
     }
 
-    pub fn return_stack(&mut self, stack: super::shared::Chips) {
-        self.player_info
+    pub fn return_from_hand(&mut self, participant: ParticipantInfo) {
+        assert_eq!(self.seat_no, participant.seat_no);
+        self.player
             .as_mut()
             .expect("cannot return a stack to a free seat")
-            .return_stack(stack);
+            .return_stack(participant.stack);
     }
 }
