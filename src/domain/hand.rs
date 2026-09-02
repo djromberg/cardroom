@@ -668,6 +668,254 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn four_handed_hand_is_recorded_from_blinds_through_showdown() {
+        let mut hand = hand(4);
+        let mut events = hand.start();
+
+        for (seat_no, action) in [
+            (3, Action::Call),
+            (0, Action::Call),
+            (1, Action::Call),
+            (2, Action::Check),
+            (1, Action::Check),
+            (2, Action::Bet(Chips(100))),
+            (3, Action::Fold),
+            (0, Action::Call),
+            (1, Action::Fold),
+            (2, Action::Check),
+            (0, Action::Check),
+            (2, Action::Check),
+            (0, Action::Check),
+        ] {
+            events.extend(hand.act(SeatNo(seat_no), action).unwrap());
+        }
+
+        assert_eq!(
+            events,
+            vec![
+                HandEvent::BlindPosted {
+                    seat_no: SeatNo(1),
+                    blind: Blind::Small,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(1),
+                    amount: Chips(50),
+                    current_bet: Chips(50),
+                    remaining_stack: Chips(950),
+                },
+                HandEvent::BlindPosted {
+                    seat_no: SeatNo(2),
+                    blind: Blind::Big,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(2),
+                    amount: Chips(100),
+                    current_bet: Chips(100),
+                    remaining_stack: Chips(900),
+                },
+                HandEvent::HoleCardsDealt {
+                    seat_nos: vec![SeatNo(1), SeatNo(2), SeatNo(3), SeatNo(0)],
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(3),
+                    to_call: Chips(100),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(3),
+                    action: Action::Call,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(3),
+                    amount: Chips(100),
+                    current_bet: Chips(100),
+                    remaining_stack: Chips(900),
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(0),
+                    to_call: Chips(100),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(0),
+                    action: Action::Call,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(0),
+                    amount: Chips(100),
+                    current_bet: Chips(100),
+                    remaining_stack: Chips(900),
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(1),
+                    to_call: Chips(50),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(1),
+                    action: Action::Call,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(1),
+                    amount: Chips(50),
+                    current_bet: Chips(100),
+                    remaining_stack: Chips(900),
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(2),
+                    to_call: Chips(0),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(2),
+                    action: Action::Check,
+                },
+                HandEvent::BettingRoundCompleted {
+                    street: Street::Preflop,
+                    pots: vec![Pot {
+                        amount: Chips(400),
+                        eligible_seats: vec![SeatNo(0), SeatNo(1), SeatNo(2), SeatNo(3)],
+                    }],
+                },
+                HandEvent::CommunityCardsDealt {
+                    street: Street::Flop,
+                    cards: vec![Card::new(9), Card::new(10), Card::new(11)],
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(1),
+                    to_call: Chips(0),
+                    min_raise_to: Chips(100),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(1),
+                    action: Action::Check,
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(2),
+                    to_call: Chips(0),
+                    min_raise_to: Chips(100),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(2),
+                    action: Action::Bet(Chips(100)),
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(2),
+                    amount: Chips(100),
+                    current_bet: Chips(100),
+                    remaining_stack: Chips(800),
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(3),
+                    to_call: Chips(100),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(3),
+                    action: Action::Fold,
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(0),
+                    to_call: Chips(100),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(0),
+                    action: Action::Call,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(0),
+                    amount: Chips(100),
+                    current_bet: Chips(100),
+                    remaining_stack: Chips(800),
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(1),
+                    to_call: Chips(100),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(1),
+                    action: Action::Fold,
+                },
+                HandEvent::BettingRoundCompleted {
+                    street: Street::Flop,
+                    pots: vec![Pot {
+                        amount: Chips(600),
+                        eligible_seats: vec![SeatNo(0), SeatNo(2)],
+                    }],
+                },
+                HandEvent::CommunityCardsDealt {
+                    street: Street::Turn,
+                    cards: vec![Card::new(13)],
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(2),
+                    to_call: Chips(0),
+                    min_raise_to: Chips(100),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(2),
+                    action: Action::Check,
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(0),
+                    to_call: Chips(0),
+                    min_raise_to: Chips(100),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(0),
+                    action: Action::Check,
+                },
+                HandEvent::BettingRoundCompleted {
+                    street: Street::Turn,
+                    pots: vec![Pot {
+                        amount: Chips(600),
+                        eligible_seats: vec![SeatNo(0), SeatNo(2)],
+                    }],
+                },
+                HandEvent::CommunityCardsDealt {
+                    street: Street::River,
+                    cards: vec![Card::new(15)],
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(2),
+                    to_call: Chips(0),
+                    min_raise_to: Chips(100),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(2),
+                    action: Action::Check,
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(0),
+                    to_call: Chips(0),
+                    min_raise_to: Chips(100),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(0),
+                    action: Action::Check,
+                },
+                HandEvent::BettingRoundCompleted {
+                    street: Street::River,
+                    pots: vec![Pot {
+                        amount: Chips(600),
+                        eligible_seats: vec![SeatNo(0), SeatNo(2)],
+                    }],
+                },
+                HandEvent::Showdown {
+                    seat_nos: vec![SeatNo(0), SeatNo(2)],
+                },
+                HandEvent::ChipsAwarded {
+                    seat_no: SeatNo(0),
+                    amount: Chips(600),
+                },
+                HandEvent::HandFinished,
+            ]
+        );
+    }
     #[test]
     fn fold_ends_heads_up_hand() {
         let mut h = hand(2);
