@@ -56,10 +56,9 @@ impl Hand {
         self.started = true;
         let small = if self.participants.len() == 2 { 0 } else { 1 };
         let big = (small + 1) % self.participants.len();
-        let mut events = vec![
-            self.place_chips(small, self.blinds.small),
-            self.place_chips(big, self.blinds.big),
-        ];
+        let mut events = vec![];
+        events.extend(self.post_blind(small, Blind::Small, self.blinds.small));
+        events.extend(self.post_blind(big, Blind::Big, self.blinds.big));
         events.push(self.deal_hole_cards());
         for participant in &mut self.participants {
             participant.pending = participant.can_act();
@@ -328,12 +327,22 @@ impl Hand {
         participant.stack = participant.stack - amount;
         participant.current_bet = participant.current_bet + amount;
         participant.committed = participant.committed + amount;
-        HandEvent::ChipsPlaced {
+        HandEvent::ChipsCommitted {
             seat_no: participant.seat_no,
             amount,
             current_bet: participant.current_bet,
             remaining_stack: participant.stack,
         }
+    }
+
+    fn post_blind(&mut self, position: usize, blind: Blind, amount: Chips) -> Vec<HandEvent> {
+        vec![
+            HandEvent::BlindPosted {
+                seat_no: self.participants[position].seat_no,
+                blind,
+            },
+            self.place_chips(position, amount),
+        ]
     }
 
     fn next_pending(&self, after: usize) -> Option<usize> {
@@ -439,6 +448,12 @@ pub enum Action {
     RaiseTo(Chips),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Blind {
+    Small,
+    Big,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HandError {
     NotStarted,
@@ -455,7 +470,11 @@ pub enum HandError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HandEvent {
-    ChipsPlaced {
+    BlindPosted {
+        seat_no: SeatNo,
+        blind: Blind,
+    },
+    ChipsCommitted {
         seat_no: SeatNo,
         amount: Chips,
         current_bet: Chips,
@@ -772,15 +791,23 @@ mod tests {
         let events = hand.start();
 
         assert_eq!(
-            &events[..3],
+            &events[..5],
             &[
-                HandEvent::ChipsPlaced {
+                HandEvent::BlindPosted {
+                    seat_no: SeatNo(0),
+                    blind: Blind::Small,
+                },
+                HandEvent::ChipsCommitted {
                     seat_no: SeatNo(0),
                     amount: Chips(50),
                     current_bet: Chips(50),
                     remaining_stack: Chips(0),
                 },
-                HandEvent::ChipsPlaced {
+                HandEvent::BlindPosted {
+                    seat_no: SeatNo(1),
+                    blind: Blind::Big,
+                },
+                HandEvent::ChipsCommitted {
                     seat_no: SeatNo(1),
                     amount: Chips(50),
                     current_bet: Chips(50),
