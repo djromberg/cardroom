@@ -183,9 +183,13 @@ impl Hand {
                 let pot = self.pots.iter().fold(Chips(0), |sum, pot| sum + pot.amount);
                 self.participants[winner].stack = self.participants[winner].stack + pot;
                 self.finished = true;
-                events.push(HandEvent::ChipsAwarded {
-                    seat_no: self.participants[winner].seat_no,
+                events.push(HandEvent::PotAwarded {
                     amount: pot,
+                    eligible_seats: vec![self.participants[winner].seat_no],
+                    awards: vec![PotAward {
+                        seat_no: self.participants[winner].seat_no,
+                        amount: pot,
+                    }],
                 });
                 events.push(HandEvent::HandFinished);
                 break;
@@ -247,7 +251,17 @@ impl Hand {
             .iter()
             .map(|position| self.participants[*position].seat_no)
             .collect();
-        let mut events = vec![HandEvent::Showdown { seat_nos }];
+        let mut events = vec![HandEvent::ShowdownStarted { seat_nos }];
+
+        for position in &contenders {
+            let participant = &self.participants[*position];
+            let cards = participant.cards.as_slice().try_into().unwrap();
+            events.push(HandEvent::HoleCardsShown {
+                seat_no: participant.seat_no,
+                cards,
+                hand: self.evaluated_hand(*position).1,
+            });
+        }
 
         for pot in self.pots.clone() {
             let eligible: Vec<_> = contenders
@@ -259,25 +273,32 @@ impl Hand {
                 })
                 .collect();
             debug_assert!(!eligible.is_empty());
-            let best = eligible
+            let evaluations: Vec<_> = eligible
                 .iter()
-                .map(|position| self.hand_value(*position))
-                .max()
-                .unwrap();
-            let winners: Vec<_> = eligible
+                .map(|position| (*position, self.evaluated_hand(*position).0))
+                .collect();
+            let best = evaluations.iter().map(|(_, score)| *score).max().unwrap();
+            let winners: Vec<_> = evaluations
                 .into_iter()
-                .filter(|position| self.hand_value(*position) == best)
+                .filter(|(_, score)| *score == best)
+                .map(|(position, _)| position)
                 .collect();
             let share = pot.amount.0 / winners.len() as u64;
             let remainder = pot.amount.0 % winners.len() as u64;
+            let mut awards = Vec::with_capacity(winners.len());
             for (order, position) in winners.into_iter().enumerate() {
                 let amount = Chips(share + u64::from((order as u64) < remainder));
                 self.participants[position].stack = self.participants[position].stack + amount;
-                events.push(HandEvent::ChipsAwarded {
+                awards.push(PotAward {
                     seat_no: self.participants[position].seat_no,
                     amount,
                 });
             }
+            events.push(HandEvent::PotAwarded {
+                amount: pot.amount,
+                eligible_seats: pot.eligible_seats,
+                awards,
+            });
         }
         self.finished = true;
         self.current = None;
@@ -285,24 +306,34 @@ impl Hand {
         events
     }
 
-    fn hand_value(&self, position: usize) -> u64 {
+    fn evaluated_hand(&self, position: usize) -> (u64, EvaluatedHand) {
         let mut cards = self.board.clone();
         cards.extend(self.participants[position].cards.iter().copied());
         let mut best = 0;
+        let mut best_five = [cards[0]; 5];
         for a in 0..cards.len() - 4 {
             for b in a + 1..cards.len() - 3 {
                 for c in b + 1..cards.len() - 2 {
                     for d in c + 1..cards.len() - 1 {
                         for e in d + 1..cards.len() {
-                            best = best.max(score_five([
-                                cards[a], cards[b], cards[c], cards[d], cards[e],
-                            ]));
+                            let candidate = [cards[a], cards[b], cards[c], cards[d], cards[e]];
+                            let score = score_five(candidate);
+                            if score > best {
+                                best = score;
+                                best_five = candidate;
+                            }
                         }
                     }
                 }
             }
         }
-        best
+        (
+            best,
+            EvaluatedHand {
+                category: HandCategory::from_score(best),
+                best_five,
+            },
+        )
     }
 
     fn deal_hole_cards(&mut self) -> HandEvent {
@@ -505,14 +536,65 @@ pub enum HandEvent {
         street: Street,
         cards: Vec<Card>,
     },
-    Showdown {
+    ShowdownStarted {
         seat_nos: Vec<SeatNo>,
     },
-    ChipsAwarded {
+    HoleCardsShown {
         seat_no: SeatNo,
+        cards: [Card; 2],
+        hand: EvaluatedHand,
+    },
+    PotAwarded {
         amount: Chips,
+        eligible_seats: Vec<SeatNo>,
+        awards: Vec<PotAward>,
     },
     HandFinished,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PotAward {
+    pub seat_no: SeatNo,
+    pub amount: Chips,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvaluatedHand {
+    pub category: HandCategory,
+    pub best_five: [Card; 5],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HandCategory {
+    HighCard,
+    OnePair,
+    TwoPair,
+    ThreeOfAKind,
+    Straight,
+    Flush,
+    FullHouse,
+    FourOfAKind,
+    StraightFlush,
+}
+
+impl HandCategory {
+    fn from_score(mut score: u64) -> Self {
+        for _ in 0..5 {
+            score /= 15;
+        }
+        match score {
+            0 => Self::HighCard,
+            1 => Self::OnePair,
+            2 => Self::TwoPair,
+            3 => Self::ThreeOfAKind,
+            4 => Self::Straight,
+            5 => Self::Flush,
+            6 => Self::FullHouse,
+            7 => Self::FourOfAKind,
+            8 => Self::StraightFlush,
+            _ => unreachable!("invalid hand category"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -905,12 +987,44 @@ mod tests {
                         eligible_seats: vec![SeatNo(0), SeatNo(2)],
                     }],
                 },
-                HandEvent::Showdown {
+                HandEvent::ShowdownStarted {
                     seat_nos: vec![SeatNo(0), SeatNo(2)],
                 },
-                HandEvent::ChipsAwarded {
+                HandEvent::HoleCardsShown {
                     seat_no: SeatNo(0),
+                    cards: [Card::new(3), Card::new(7)],
+                    hand: EvaluatedHand {
+                        category: HandCategory::Flush,
+                        best_five: [
+                            Card::new(9),
+                            Card::new(10),
+                            Card::new(11),
+                            Card::new(3),
+                            Card::new(7),
+                        ],
+                    },
+                },
+                HandEvent::HoleCardsShown {
+                    seat_no: SeatNo(2),
+                    cards: [Card::new(1), Card::new(5)],
+                    hand: EvaluatedHand {
+                        category: HandCategory::Flush,
+                        best_five: [
+                            Card::new(9),
+                            Card::new(10),
+                            Card::new(11),
+                            Card::new(1),
+                            Card::new(5),
+                        ],
+                    },
+                },
+                HandEvent::PotAwarded {
                     amount: Chips(600),
+                    eligible_seats: vec![SeatNo(0), SeatNo(2)],
+                    awards: vec![PotAward {
+                        seat_no: SeatNo(0),
+                        amount: Chips(600),
+                    }],
                 },
                 HandEvent::HandFinished,
             ]
@@ -933,9 +1047,13 @@ mod tests {
                 eligible_seats: vec![SeatNo(1)],
             }],
         }));
-        assert!(events.contains(&HandEvent::ChipsAwarded {
-            seat_no: SeatNo(1),
-            amount: Chips(100)
+        assert!(events.contains(&HandEvent::PotAwarded {
+            amount: Chips(100),
+            eligible_seats: vec![SeatNo(1)],
+            awards: vec![PotAward {
+                seat_no: SeatNo(1),
+                amount: Chips(100),
+            }],
         }));
     }
 
@@ -1087,12 +1205,14 @@ mod tests {
                 ..
             }
         )));
-        assert!(events.contains(&HandEvent::Showdown {
+        assert!(events.contains(&HandEvent::ShowdownStarted {
             seat_nos: vec![SeatNo(0), SeatNo(1)],
         }));
-        assert!(!events
-            .iter()
-            .any(|event| matches!(event, HandEvent::ActionRequested { .. })));
+        assert!(
+            !events
+                .iter()
+                .any(|event| matches!(event, HandEvent::ActionRequested { .. }))
+        );
         assert_eq!(events.last(), Some(&HandEvent::HandFinished));
         assert!(hand.is_finished());
         assert_eq!(
@@ -1150,20 +1270,39 @@ mod tests {
             street: Street::River,
             cards: vec![Card::new(17)],
         }));
-        assert!(events.contains(&HandEvent::Showdown {
+        assert!(events.contains(&HandEvent::ShowdownStarted {
             seat_nos: vec![SeatNo(0), SeatNo(2), SeatNo(3)],
         }));
         let seat_zero_winnings = events
             .iter()
             .filter_map(|event| match event {
-                HandEvent::ChipsAwarded {
-                    seat_no: SeatNo(0),
-                    amount,
-                } => Some(amount.0),
+                HandEvent::PotAwarded { awards, .. } => awards
+                    .iter()
+                    .find(|award| award.seat_no == SeatNo(0))
+                    .map(|award| award.amount.0),
                 _ => None,
             })
             .sum::<u64>();
         assert_eq!(seat_zero_winnings, 1900);
+        let awarded_pots: Vec<_> = events
+            .iter()
+            .filter_map(|event| match event {
+                HandEvent::PotAwarded { amount, awards, .. } => Some((amount, awards)),
+                _ => None,
+            })
+            .collect();
+        let final_pot_count = events
+            .iter()
+            .rev()
+            .find_map(|event| match event {
+                HandEvent::BettingRoundCompleted { pots, .. } => Some(pots.len()),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(awarded_pots.len(), final_pot_count);
+        assert!(awarded_pots.iter().all(|(amount, awards)| {
+            awards.iter().map(|award| award.amount.0).sum::<u64>() == amount.0
+        }));
         assert_eq!(events.last(), Some(&HandEvent::HandFinished));
         assert!(hand.is_finished());
         assert_eq!(
@@ -1223,13 +1362,17 @@ mod tests {
             street: Street::Flop,
             cards: vec![Card::new(37), Card::new(14), Card::new(28)],
         }));
-        assert!(events.contains(&HandEvent::Showdown {
+        assert!(events.contains(&HandEvent::ShowdownStarted {
             seat_nos: vec![SeatNo(0), SeatNo(1)],
         }));
         assert!(
-            events.contains(&HandEvent::ChipsAwarded {
-                seat_no: SeatNo(1),
+            events.contains(&HandEvent::PotAwarded {
                 amount: Chips(2000),
+                eligible_seats: vec![SeatNo(0), SeatNo(1)],
+                awards: vec![PotAward {
+                    seat_no: SeatNo(1),
+                    amount: Chips(2000),
+                }],
             }),
             "unexpected settlement events: {events:?}"
         );
