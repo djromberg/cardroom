@@ -1382,4 +1382,159 @@ mod tests {
             vec![(SeatNo(0), Chips(0)), (SeatNo(1), Chips(2000))]
         );
     }
+
+    #[test]
+    fn big_blind_straight_beats_small_blind_three_of_a_kind_after_preflop_all_in() {
+        // Heads-up cards are dealt to the big blind (seat 1) first. Seat 0 gets
+        // pocket deuces and finds a third deuce on the flop, while seat 1's five
+        // and six complete a nine-high straight on the board. Positions 4, 8,
+        // and 10 are burn cards.
+        let prefix = [3, 0, 17, 13, 1, 26, 5, 19, 2, 33, 4, 50];
+        let mut card_values = prefix.to_vec();
+        card_values.extend((0..52).filter(|value| !prefix.contains(value)));
+        let deck = Deck::new(std::array::from_fn(|index| Card::new(card_values[index])));
+        let mut hand = Hand::new(
+            deck,
+            Blinds {
+                small: Chips(50),
+                big: Chips(100),
+            },
+            vec![
+                ParticipantInfo {
+                    seat_no: SeatNo(0),
+                    stack: Chips(1000),
+                },
+                ParticipantInfo {
+                    seat_no: SeatNo(1),
+                    stack: Chips(1000),
+                },
+            ],
+        );
+
+        let mut events = hand.start();
+        events.extend(hand.act(SeatNo(0), Action::RaiseTo(Chips(1000))).unwrap());
+        events.extend(hand.act(SeatNo(1), Action::Call).unwrap());
+
+        assert_eq!(
+            events,
+            vec![
+                HandEvent::BlindPosted {
+                    seat_no: SeatNo(0),
+                    blind: Blind::Small,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(0),
+                    amount: Chips(50),
+                    current_bet: Chips(50),
+                    remaining_stack: Chips(950),
+                },
+                HandEvent::BlindPosted {
+                    seat_no: SeatNo(1),
+                    blind: Blind::Big,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(1),
+                    amount: Chips(100),
+                    current_bet: Chips(100),
+                    remaining_stack: Chips(900),
+                },
+                HandEvent::HoleCardsDealt {
+                    seat_nos: vec![SeatNo(1), SeatNo(0)],
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(0),
+                    to_call: Chips(50),
+                    min_raise_to: Chips(200),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(0),
+                    action: Action::RaiseTo(Chips(1000)),
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(0),
+                    amount: Chips(950),
+                    current_bet: Chips(1000),
+                    remaining_stack: Chips(0),
+                },
+                HandEvent::ActionRequested {
+                    seat_no: SeatNo(1),
+                    to_call: Chips(900),
+                    min_raise_to: Chips(1900),
+                },
+                HandEvent::PlayerActed {
+                    seat_no: SeatNo(1),
+                    action: Action::Call,
+                },
+                HandEvent::ChipsCommitted {
+                    seat_no: SeatNo(1),
+                    amount: Chips(900),
+                    current_bet: Chips(1000),
+                    remaining_stack: Chips(0),
+                },
+                HandEvent::BettingRoundCompleted {
+                    street: Street::Preflop,
+                    pots: vec![Pot {
+                        amount: Chips(2000),
+                        eligible_seats: vec![SeatNo(0), SeatNo(1)],
+                    }],
+                },
+                HandEvent::CommunityCardsDealt {
+                    street: Street::Flop,
+                    cards: vec![Card::new(26), Card::new(5), Card::new(19)],
+                },
+                HandEvent::CommunityCardsDealt {
+                    street: Street::Turn,
+                    cards: vec![Card::new(33)],
+                },
+                HandEvent::CommunityCardsDealt {
+                    street: Street::River,
+                    cards: vec![Card::new(50)],
+                },
+                HandEvent::ShowdownStarted {
+                    seat_nos: vec![SeatNo(0), SeatNo(1)],
+                },
+                HandEvent::HoleCardsShown {
+                    seat_no: SeatNo(0),
+                    cards: [Card::new(0), Card::new(13)],
+                    hand: EvaluatedHand {
+                        category: HandCategory::ThreeOfAKind,
+                        best_five: [
+                            Card::new(26),
+                            Card::new(33),
+                            Card::new(50),
+                            Card::new(0),
+                            Card::new(13),
+                        ],
+                    },
+                },
+                HandEvent::HoleCardsShown {
+                    seat_no: SeatNo(1),
+                    cards: [Card::new(3), Card::new(17)],
+                    hand: EvaluatedHand {
+                        category: HandCategory::Straight,
+                        best_five: [
+                            Card::new(5),
+                            Card::new(19),
+                            Card::new(33),
+                            Card::new(3),
+                            Card::new(17),
+                        ],
+                    },
+                },
+                HandEvent::PotAwarded {
+                    amount: Chips(2000),
+                    eligible_seats: vec![SeatNo(0), SeatNo(1)],
+                    awards: vec![PotAward {
+                        seat_no: SeatNo(1),
+                        amount: Chips(2000),
+                    }],
+                },
+                HandEvent::HandFinished,
+            ]
+        );
+        assert_eq!(
+            hand.stacks(),
+            vec![(SeatNo(0), Chips(0)), (SeatNo(1), Chips(2000))]
+        );
+    }
 }
