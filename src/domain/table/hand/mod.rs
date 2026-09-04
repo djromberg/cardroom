@@ -1,8 +1,9 @@
 use std::cmp::min;
 
-use super::super::shared::{Blinds, Chips, SeatNo};
+use super::super::chips::Chips;
 use super::card::Card;
 use super::deck::Deck;
+use super::{Blinds, SeatNo};
 use dealer::Dealer;
 use participant::Participant;
 use ranking::evaluate;

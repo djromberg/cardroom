@@ -1,15 +1,16 @@
-use super::super::shared::{Chips, PlayerId};
+use super::super::account::AccountId;
+use super::super::chips::Chips;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Player {
-    player_id: PlayerId,
+    account_id: AccountId,
     nickname: String,
     stack: StackLocation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlayerInfo {
-    player_id: PlayerId,
+    account_id: AccountId,
     nickname: String,
     stack: Chips,
 }
@@ -23,14 +24,14 @@ enum StackLocation {
 impl Player {
     pub(super) fn new(info: PlayerInfo) -> Self {
         Self {
-            player_id: info.player_id,
+            account_id: info.account_id,
             nickname: info.nickname,
             stack: StackLocation::AtTable(info.stack),
         }
     }
 
-    pub(super) fn player_id(&self) -> PlayerId {
-        self.player_id
+    pub(super) fn account_id(&self) -> AccountId {
+        self.account_id
     }
 
     pub(super) fn nickname(&self) -> &str {
@@ -59,16 +60,16 @@ impl Player {
 }
 
 impl PlayerInfo {
-    pub fn new(player_id: PlayerId, nickname: String, stack: Chips) -> Self {
+    pub fn new(account_id: AccountId, nickname: String, stack: Chips) -> Self {
         Self {
-            player_id,
+            account_id,
             nickname,
             stack,
         }
     }
 
-    pub fn player_id(&self) -> PlayerId {
-        self.player_id
+    pub fn account_id(&self) -> AccountId {
+        self.account_id
     }
 
     pub fn nickname(&self) -> &str {

@@ -1,12 +1,16 @@
-use super::shared::{Blinds, Chips, SeatNo, TableId};
+use super::chips::Chips;
 use deck::Deck;
 use hand::{Hand, ParticipantInfo};
 use player::Player;
 use seat::Seat;
+use uuid::Uuid;
 
+pub use blinds::Blinds;
 pub use hand::{Action, HandError, HandEvent};
 pub use player::PlayerInfo;
+pub use seat::SeatNo;
 
+mod blinds;
 pub mod card;
 pub mod deck;
 mod hand;
@@ -15,6 +19,27 @@ mod seat;
 
 #[cfg(test)]
 mod tests;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TableId(Uuid);
+
+impl TableId {
+    pub const fn new(value: Uuid) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Uuid> for TableId {
+    fn from(value: Uuid) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<TableId> for Uuid {
+    fn from(table_id: TableId) -> Self {
+        table_id.0
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Table {

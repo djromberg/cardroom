@@ -1,6 +1,15 @@
-use super::super::shared::PlayerId;
+use super::super::account::AccountId;
 use super::card::Card;
 use super::*;
+use uuid::Uuid;
+
+fn table_id(value: u128) -> TableId {
+    TableId::new(Uuid::from_u128(value))
+}
+
+fn account_id(value: u128) -> AccountId {
+    AccountId::new(Uuid::from_u128(value))
+}
 
 fn deck() -> Deck {
     Deck::new(std::array::from_fn(|index| Card::from_index(index as u8))).unwrap()
@@ -8,9 +17,9 @@ fn deck() -> Deck {
 
 #[test]
 fn table_controls_hand_and_updates_stacks() {
-    let mut table = Table::open(TableId(7), 2);
-    table.seat_player(PlayerInfo::new(PlayerId(1), "one".into(), Chips(1000)));
-    table.seat_player(PlayerInfo::new(PlayerId(2), "two".into(), Chips(1000)));
+    let mut table = Table::open(table_id(7), 2);
+    table.seat_player(PlayerInfo::new(account_id(1), "one".into(), Chips(1000)));
+    table.seat_player(PlayerInfo::new(account_id(2), "two".into(), Chips(1000)));
     let started = table
         .start_hand(
             deck(),
@@ -38,9 +47,9 @@ fn table_controls_hand_and_updates_stacks() {
 
 #[test]
 fn cannot_replace_an_active_hand() {
-    let mut table = Table::open(TableId(7), 2);
-    table.seat_player(PlayerInfo::new(PlayerId(1), "one".into(), Chips(1000)));
-    table.seat_player(PlayerInfo::new(PlayerId(2), "two".into(), Chips(1000)));
+    let mut table = Table::open(table_id(7), 2);
+    table.seat_player(PlayerInfo::new(account_id(1), "one".into(), Chips(1000)));
+    table.seat_player(PlayerInfo::new(account_id(2), "two".into(), Chips(1000)));
     table
         .start_hand(
             deck(),

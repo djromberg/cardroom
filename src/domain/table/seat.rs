@@ -1,6 +1,8 @@
-use super::super::shared::SeatNo;
 use super::hand::ParticipantInfo;
 use super::player::{Player, PlayerInfo};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SeatNo(pub u8);
 
 #[derive(Debug, Clone)]
 pub(super) struct Seat {

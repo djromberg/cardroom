@@ -1,4 +1,5 @@
-use super::super::super::shared::{Chips, SeatNo};
+use super::super::super::chips::Chips;
+use super::super::SeatNo;
 use super::super::card::Card;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
