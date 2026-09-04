@@ -1,4 +1,4 @@
-use super::super::card::Card;
+use crate::domain::table::card::Card;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvaluatedHand {

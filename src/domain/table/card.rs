@@ -111,7 +111,7 @@ impl Suit {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::domain::table::card::*;
 
     #[test]
     fn card_exposes_its_rank_and_suit() {

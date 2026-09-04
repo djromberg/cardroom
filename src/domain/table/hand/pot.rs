@@ -1,6 +1,7 @@
-use super::super::super::chips::Chips;
-use super::super::SeatNo;
-use super::participant::Participant;
+use crate::domain::{
+    chips::Chips,
+    table::{SeatNo, hand::participant::Participant},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pot {

@@ -1,4 +1,4 @@
-use super::card::Card;
+use crate::domain::table::card::Card;
 
 const DECK_SIZE: usize = 52;
 
@@ -38,8 +38,8 @@ pub enum InvalidDeck {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::domain::table::card::{Rank, Suit};
+    use crate::domain::table::deck::*;
 
     #[test]
     fn new_with_duplicate_cards() {

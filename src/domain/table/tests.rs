@@ -1,7 +1,8 @@
-use super::super::account::AccountId;
-use super::card::Card;
-use super::*;
 use uuid::Uuid;
+
+use crate::domain::account::AccountId;
+use crate::domain::table::card::Card;
+use crate::domain::table::*;
 
 fn table_id(value: u128) -> TableId {
     TableId::new(Uuid::from_u128(value))

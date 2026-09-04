@@ -1,6 +1,7 @@
-use super::super::super::chips::Chips;
-use super::super::SeatNo;
-use super::super::card::Card;
+use crate::domain::{
+    chips::Chips,
+    table::{SeatNo, card::Card},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::domain::table) struct ParticipantInfo {

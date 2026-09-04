@@ -1,4 +1,4 @@
-use super::*;
+use crate::domain::table::hand::*;
 fn hand(count: u8) -> Hand {
     Hand::new(
         Deck::new(std::array::from_fn(|i| Card::from_index(i as u8))).unwrap(),

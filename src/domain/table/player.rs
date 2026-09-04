@@ -1,5 +1,4 @@
-use super::super::account::AccountId;
-use super::super::chips::Chips;
+use crate::domain::{account::AccountId, chips::Chips};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Player {

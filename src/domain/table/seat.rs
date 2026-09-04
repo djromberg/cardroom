@@ -1,5 +1,7 @@
-use super::hand::ParticipantInfo;
-use super::player::{Player, PlayerInfo};
+use crate::domain::table::{
+    hand::ParticipantInfo,
+    player::{Player, PlayerInfo},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SeatNo(pub u8);

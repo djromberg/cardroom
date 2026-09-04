@@ -1,16 +1,20 @@
 use std::cmp::min;
 
-use super::super::chips::Chips;
-use super::card::Card;
-use super::deck::Deck;
-use super::{Blinds, SeatNo};
-use dealer::Dealer;
-use participant::Participant;
-use ranking::evaluate;
+use crate::domain::{
+    chips::Chips,
+    table::{
+        Blinds, SeatNo,
+        card::Card,
+        deck::Deck,
+        hand::{dealer::Dealer, participant::Participant, ranking::evaluate},
+    },
+};
 
-pub(super) use participant::ParticipantInfo;
-pub use pot::{Pot, PotAward};
-pub use ranking::{EvaluatedHand, HandCategory};
+pub(super) use crate::domain::table::hand::participant::ParticipantInfo;
+pub use crate::domain::table::hand::{
+    pot::{Pot, PotAward},
+    ranking::{EvaluatedHand, HandCategory},
+};
 
 mod dealer;
 mod participant;

@@ -1,5 +1,4 @@
-use super::super::card::Card;
-use super::super::deck::Deck;
+use crate::domain::table::{card::Card, deck::Deck};
 
 #[derive(Debug, Clone)]
 pub(super) struct Dealer {
@@ -21,7 +20,7 @@ impl Dealer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::domain::table::hand::dealer::*;
 
     #[test]
     fn deal_card() {

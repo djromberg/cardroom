@@ -1,14 +1,21 @@
-use super::chips::Chips;
-use deck::Deck;
-use hand::{Hand, ParticipantInfo};
-use player::Player;
-use seat::Seat;
 use uuid::Uuid;
 
-pub use blinds::Blinds;
-pub use hand::{Action, HandError, HandEvent};
-pub use player::PlayerInfo;
-pub use seat::SeatNo;
+use crate::domain::{
+    chips::Chips,
+    table::{
+        deck::Deck,
+        hand::{Hand, ParticipantInfo},
+        player::Player,
+        seat::Seat,
+    },
+};
+
+pub use crate::domain::table::{
+    blinds::Blinds,
+    hand::{Action, HandError, HandEvent},
+    player::PlayerInfo,
+    seat::SeatNo,
+};
 
 mod blinds;
 pub mod card;
