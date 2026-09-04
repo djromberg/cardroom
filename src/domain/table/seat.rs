@@ -1,46 +1,46 @@
+use super::super::shared::SeatNo;
 use super::hand::ParticipantInfo;
 use super::player::{Player, PlayerInfo};
-use super::shared::SeatNo;
 
 #[derive(Debug, Clone)]
-pub struct Seat {
+pub(super) struct Seat {
     seat_no: SeatNo,
     player: Option<Player>,
 }
 
 impl Seat {
-    pub fn new(seat_no: SeatNo) -> Self {
+    pub(super) fn new(seat_no: SeatNo) -> Self {
         Self {
             seat_no,
             player: None,
         }
     }
 
-    pub fn seat_no(&self) -> SeatNo {
+    pub(super) fn seat_no(&self) -> SeatNo {
         self.seat_no
     }
 
-    pub fn player(&self) -> Option<&Player> {
+    pub(super) fn player(&self) -> Option<&Player> {
         self.player.as_ref()
     }
 
-    pub fn is_free(&self) -> bool {
+    pub(super) fn is_free(&self) -> bool {
         self.player.is_none()
     }
 
-    pub fn take(&mut self, player_info: PlayerInfo) {
+    pub(super) fn take(&mut self, player_info: PlayerInfo) {
         assert!(self.is_free());
         self.player = Some(Player::new(player_info));
     }
 
-    pub fn participate_in_hand(&mut self) -> Option<ParticipantInfo> {
+    pub(super) fn participate_in_hand(&mut self) -> Option<ParticipantInfo> {
         self.player.as_mut().map(|player| ParticipantInfo {
             seat_no: self.seat_no,
             stack: player.take_stack(),
         })
     }
 
-    pub fn return_from_hand(&mut self, participant: ParticipantInfo) {
+    pub(super) fn return_from_hand(&mut self, participant: ParticipantInfo) {
         assert_eq!(self.seat_no, participant.seat_no);
         self.player
             .as_mut()

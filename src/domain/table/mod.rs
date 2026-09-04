@@ -1,11 +1,20 @@
-use super::deck::Deck;
-use super::hand::{Action, Hand, HandError, HandEvent, ParticipantInfo};
-use super::player::{Player, PlayerInfo};
-use super::seat::Seat;
-use super::shared::Blinds;
-use super::shared::Chips;
-use super::shared::SeatNo;
-use super::shared::TableId;
+use super::shared::{Blinds, Chips, SeatNo, TableId};
+use deck::Deck;
+use hand::{Hand, ParticipantInfo};
+use player::Player;
+use seat::Seat;
+
+pub use hand::{Action, HandError, HandEvent};
+pub use player::PlayerInfo;
+
+pub mod card;
+pub mod deck;
+mod hand;
+mod player;
+mod seat;
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug, Clone)]
 pub struct Table {
@@ -18,7 +27,7 @@ pub struct Table {
 
 impl Table {
     pub fn open(id: TableId, seat_count: u8) -> Self {
-        assert!(seat_count >= 2 && seat_count <= 10);
+        assert!((2..=10).contains(&seat_count));
         let mut seats = vec![];
         for i in 0..seat_count {
             seats.push(Seat::new(SeatNo(i)))
@@ -166,72 +175,5 @@ pub enum TableError {
 impl From<HandError> for TableError {
     fn from(error: HandError) -> Self {
         Self::Hand(error)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::card::Card;
-    use super::super::shared::PlayerId;
-    use super::*;
-
-    fn deck() -> Deck {
-        Deck::new(std::array::from_fn(|index| Card::new(index as u8)))
-    }
-
-    #[test]
-    fn table_controls_hand_and_updates_stacks() {
-        let mut table = Table::open(TableId(7), 2);
-        table.seat_player(PlayerInfo::new(PlayerId(1), "one".into(), Chips(1000)));
-        table.seat_player(PlayerInfo::new(PlayerId(2), "two".into(), Chips(1000)));
-        let started = table
-            .start_hand(
-                deck(),
-                Blinds {
-                    small: Chips(50),
-                    big: Chips(100),
-                },
-            )
-            .unwrap();
-        assert!(matches!(
-            started.first(),
-            Some(TableEvent::HandStarted {
-                dealer_seat: SeatNo(0),
-                ..
-            })
-        ));
-        assert_eq!(table.seats[0].player().unwrap().stack(), None);
-        assert_eq!(table.seats[1].player().unwrap().stack(), None);
-
-        table.act(SeatNo(0), Action::Fold).unwrap();
-        assert!(table.hand.is_none());
-        assert_eq!(table.seats[0].player().unwrap().stack(), Some(Chips(950)));
-        assert_eq!(table.seats[1].player().unwrap().stack(), Some(Chips(1050)));
-    }
-
-    #[test]
-    fn cannot_replace_an_active_hand() {
-        let mut table = Table::open(TableId(7), 2);
-        table.seat_player(PlayerInfo::new(PlayerId(1), "one".into(), Chips(1000)));
-        table.seat_player(PlayerInfo::new(PlayerId(2), "two".into(), Chips(1000)));
-        table
-            .start_hand(
-                deck(),
-                Blinds {
-                    small: Chips(50),
-                    big: Chips(100),
-                },
-            )
-            .unwrap();
-        assert_eq!(
-            table.start_hand(
-                deck(),
-                Blinds {
-                    small: Chips(50),
-                    big: Chips(100)
-                }
-            ),
-            Err(TableError::HandInProgress)
-        );
     }
 }

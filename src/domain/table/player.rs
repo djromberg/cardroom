@@ -1,7 +1,7 @@
-use super::shared::{Chips, PlayerId};
+use super::super::shared::{Chips, PlayerId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Player {
+pub(super) struct Player {
     player_id: PlayerId,
     nickname: String,
     stack: StackLocation,
@@ -21,7 +21,7 @@ enum StackLocation {
 }
 
 impl Player {
-    pub fn new(info: PlayerInfo) -> Self {
+    pub(super) fn new(info: PlayerInfo) -> Self {
         Self {
             player_id: info.player_id,
             nickname: info.nickname,
@@ -29,22 +29,22 @@ impl Player {
         }
     }
 
-    pub fn player_id(&self) -> PlayerId {
+    pub(super) fn player_id(&self) -> PlayerId {
         self.player_id
     }
 
-    pub fn nickname(&self) -> &str {
+    pub(super) fn nickname(&self) -> &str {
         &self.nickname
     }
 
-    pub fn stack(&self) -> Option<Chips> {
+    pub(super) fn stack(&self) -> Option<Chips> {
         match self.stack {
             StackLocation::AtTable(stack) => Some(stack),
             StackLocation::InHand => None,
         }
     }
 
-    pub fn take_stack(&mut self) -> Chips {
+    pub(super) fn take_stack(&mut self) -> Chips {
         let previous = std::mem::replace(&mut self.stack, StackLocation::InHand);
         match previous {
             StackLocation::AtTable(stack) => stack,
@@ -52,7 +52,7 @@ impl Player {
         }
     }
 
-    pub fn return_stack(&mut self, stack: Chips) {
+    pub(super) fn return_stack(&mut self, stack: Chips) {
         assert_eq!(self.stack, StackLocation::InHand);
         self.stack = StackLocation::AtTable(stack);
     }
